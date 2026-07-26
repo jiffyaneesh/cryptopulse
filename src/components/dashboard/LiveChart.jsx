@@ -30,7 +30,7 @@
  */
 
 import React, { useEffect, useRef, useState } from "react";
-import { createChart, LineStyle, LineSeries } from "lightweight-charts";
+import { createChart, LineStyle, LineSeries, createSeriesMarkers } from "lightweight-charts";
 import useTickStore from "../../store/tickStore";
 import { isoToUnixSec, formatPrice } from "../../utils/formatters";
 import Spinner from "../ui/Spinner";
@@ -47,6 +47,7 @@ function LiveChart({ coinId, className = "" }) {
   const containerRef = useRef(null);
   const chartRef = useRef(null);
   const seriesRef = useRef(null);
+  const markersApiRef = useRef(null);
   const markerDataRef = useRef([]);  // Accumulate markers; batch-set on anomaly
   const unsubscribeRef = useRef(null);
   const [hasData, setHasData] = useState(false);
@@ -103,6 +104,9 @@ function LiveChart({ coinId, className = "" }) {
       lastValueVisible: true,
     });
 
+    // Create the markers plugin API instance for drawing anomalies
+    markersApiRef.current = createSeriesMarkers(seriesRef.current, []);
+
     // ResizeObserver keeps the chart width in sync with the container.
     // Without this, the chart overflows or appears cut off on window resize.
     const resizeObserver = new ResizeObserver((entries) => {
@@ -127,7 +131,9 @@ function LiveChart({ coinId, className = "" }) {
 
     // Clear series data and markers when coin changes
     seriesRef.current.setData([]);
-    seriesRef.current.setMarkers([]);
+    if (markersApiRef.current) {
+      markersApiRef.current.setMarkers([]);
+    }
     markerDataRef.current = [];
     setHasData(false);
 
@@ -158,7 +164,9 @@ function LiveChart({ coinId, className = "" }) {
           size: 1,
         }));
       markerDataRef.current = markers;
-      seriesRef.current.setMarkers(markers);
+      if (markersApiRef.current) {
+        markersApiRef.current.setMarkers(markers);
+      }
       setHasData(true);
     }
 
@@ -194,7 +202,9 @@ function LiveChart({ coinId, className = "" }) {
           markerDataRef.current = [...markerDataRef.current, marker].sort(
             (a, b) => a.time - b.time
           );
-          seriesRef.current.setMarkers(markerDataRef.current);
+          if (markersApiRef.current) {
+            markersApiRef.current.setMarkers(markerDataRef.current);
+          }
         }
       }
     );
