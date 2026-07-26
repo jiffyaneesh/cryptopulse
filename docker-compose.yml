@@ -1,0 +1,90 @@
+# docker-compose.yml — CryptoPulse Orchestration
+# ─────────────────────────────────────────────────
+# Three-service stack:
+#   redis    — message queue (v1 upgrade path from asyncio.Queue)
+#   fastapi  — Python backend (ingestion + scoring + WebSocket API)
+#   frontend — Vite build served by Nginx, proxies /api/ and /ws/ to fastapi
+#
+# Usage:
+#   docker compose up --build           # Start all services (first run)
+#   docker compose up fastapi redis     # Backend only (for local frontend dev)
+#   docker compose logs -f fastapi      # Stream backend logs
+#   docker compose down -v              # Stop and remove volumes
+
+version: "3.9"
+
+services:
+
+  # ── Redis (v1 upgrade path) ──────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: cryptopulse-redis
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - crypto-net
+
+  # ── FastAPI Backend ───────────────────────────────────────────────────────
+  fastapi:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cryptopulse-backend
+    env_file:
+      - ./backend/.env.example  # Use .env in production
+    environment:
+      - DATABASE_URL=/app/data/cryptopulse.db
+      - LOG_LEVEL=INFO
+      - CORS_ORIGINS=["http://localhost:80","http://localhost:3000"]
+    volumes:
+      - backend_data:/app/data  # Persist SQLite database
+    ports:
+      - "8000:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - crypto-net
+
+  # ── Nginx + React Frontend ────────────────────────────────────────────────
+  frontend:
+    build:
+      context: .         # Build context is project root (has src/, package.json)
+      dockerfile: Dockerfile.frontend
+    container_name: cryptopulse-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      fastapi:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - crypto-net
+
+# ── Named Volumes ─────────────────────────────────────────────────────────
+volumes:
+  redis_data:
+    driver: local
+  backend_data:
+    driver: local
+
+# ── Network ───────────────────────────────────────────────────────────────
+networks:
+  crypto-net:
+    driver: bridge
