@@ -21,12 +21,11 @@ from __future__ import annotations
 
 import logging
 
-import aiosqlite
 from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel
 
 from app.db import queries
-from app.db.database import get_db
+from app.db.database import DatabaseConnectionAdapter, get_db
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["history"])
@@ -75,8 +74,9 @@ async def get_history(
     coin_id: str = Query(..., description="CoinGecko coin ID to retrieve history for."),
     limit: int = Query(default=200, ge=1, le=MAX_LIMIT, description="Max rows to return."),
     offset: int = Query(default=0, ge=0, description="Rows to skip for pagination."),
-    db: aiosqlite.Connection = Depends(get_db),
+    db: DatabaseConnectionAdapter = Depends(get_db),
 ) -> TickHistoryResponse:
+
     """
     Return paginated tick history for a specific coin.
 

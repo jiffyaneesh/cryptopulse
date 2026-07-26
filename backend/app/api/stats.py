@@ -20,12 +20,11 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 
-import aiosqlite
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 
 from app.db import queries
-from app.db.database import get_db
+from app.db.database import DatabaseConnectionAdapter, get_db
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["stats"])
@@ -49,8 +48,9 @@ class StatsResponse(BaseModel):
 @router.get("/stats", response_model=StatsResponse, summary="Get dashboard statistics")
 async def get_stats(
     request: Request,
-    db: aiosqlite.Connection = Depends(get_db),
+    db: DatabaseConnectionAdapter = Depends(get_db),
 ) -> StatsResponse:
+
     """
     Return aggregated statistics for the dashboard stats panel.
 
