@@ -31,6 +31,7 @@ import logging
 from pathlib import Path
 
 import aiosqlite
+from fastapi import Request
 
 from app.config import get_settings
 
@@ -153,7 +154,7 @@ class DatabaseManager:
         return self._conn
 
 
-async def get_db(request) -> aiosqlite.Connection:
+async def get_db(request: Request) -> aiosqlite.Connection:
     """
     FastAPI dependency that yields the active database connection.
 

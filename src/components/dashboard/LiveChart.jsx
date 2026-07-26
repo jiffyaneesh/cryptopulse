@@ -30,7 +30,7 @@
  */
 
 import React, { useEffect, useRef, useState } from "react";
-import { createChart, LineStyle } from "lightweight-charts";
+import { createChart, LineStyle, LineSeries } from "lightweight-charts";
 import useTickStore from "../../store/tickStore";
 import { isoToUnixSec, formatPrice } from "../../utils/formatters";
 import Spinner from "../ui/Spinner";
@@ -89,7 +89,7 @@ function LiveChart({ coinId, className = "" }) {
     });
 
     // Line series for live price data
-    seriesRef.current = chartRef.current.addLineSeries({
+    seriesRef.current = chartRef.current.addSeries(LineSeries, {
       color: "hsl(195, 100%, 50%)",    // Electric cyan — matches accent color
       lineWidth: 2,
       crosshairMarkerVisible: true,
