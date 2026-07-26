@@ -37,4 +37,5 @@ HEALTHCHECK --interval=10s --timeout=5s --start-period=15s --retries=3 \
 
 # Start with uvicorn. --workers 1 is intentional: the asyncio.Queue is
 # in-process and would not be shared across multiple worker processes.
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1"]
+
