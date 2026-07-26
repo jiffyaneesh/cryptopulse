@@ -146,23 +146,36 @@ function LiveChart({ coinId, className = "" }) {
     // Load existing history for the new coin from the store
     const history = useTickStore.getState().tickHistory[coinId] || [];
     if (history.length > 0) {
-      const points = history.map((t) => ({
-        time: isoToUnixSec(t.polled_at),
-        value: t.price_usd,
-      }));
+      // De-duplicate points sharing the same second (lightweight-charts strictly forbids duplicate timestamps)
+      const uniquePoints = new Map();
+      history.forEach((t) => {
+        const timeSec = isoToUnixSec(t.polled_at);
+        uniquePoints.set(timeSec, t.price_usd);
+      });
+
+      const points = Array.from(uniquePoints.entries())
+        .map(([time, value]) => ({ time, value }))
+        .sort((a, b) => a.time - b.time);
+
       seriesRef.current.setData(points);
 
-      // Rebuild anomaly markers from history
-      const markers = history
+      // De-duplicate and rebuild anomaly markers from history
+      const uniqueMarkers = new Map();
+      history
         .filter((t) => t.is_anomaly)
-        .map((t) => ({
-          time: isoToUnixSec(t.polled_at),
-          position: "aboveBar",
-          color: "hsl(350, 100%, 60%)",  // Anomaly red
-          shape: "arrowDown",
-          text: `⚠ ${t.anomaly_score.toFixed(3)}`,
-          size: 1,
-        }));
+        .forEach((t) => {
+          const timeSec = isoToUnixSec(t.polled_at);
+          uniqueMarkers.set(timeSec, {
+            time: timeSec,
+            position: "aboveBar",
+            color: "hsl(350, 100%, 60%)",  // Anomaly red
+            shape: "arrowDown",
+            text: `⚠ ${t.anomaly_score.toFixed(3)}`,
+            size: 1,
+          });
+        });
+
+      const markers = Array.from(uniqueMarkers.values()).sort((a, b) => a.time - b.time);
       markerDataRef.current = markers;
       if (markersApiRef.current) {
         markersApiRef.current.setMarkers(markers);
@@ -198,12 +211,16 @@ function LiveChart({ coinId, className = "" }) {
             text: `⚠ ${latestTick.anomaly_score.toFixed(3)}`,
             size: 1,
           };
-          // Markers must be set as a full sorted array — lightweight-charts requirement
-          markerDataRef.current = [...markerDataRef.current, marker].sort(
-            (a, b) => a.time - b.time
-          );
+          
+          // De-duplicate markers list by timestamp to avoid duplicates on update
+          const markersMap = new Map();
+          markerDataRef.current.forEach(m => markersMap.set(m.time, m));
+          markersMap.set(marker.time, marker);
+
+          const sorted = Array.from(markersMap.values()).sort((a, b) => a.time - b.time);
+          markerDataRef.current = sorted;
           if (markersApiRef.current) {
-            markersApiRef.current.setMarkers(markerDataRef.current);
+            markersApiRef.current.setMarkers(sorted);
           }
         }
       }
