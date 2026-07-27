@@ -39,4 +39,5 @@ jobs:
             --allow-unauthenticated \
             --max-instances 1 \
             --memory 512Mi \
-            --set-env-vars DATABASE_URL="${{ secrets.DATABASE_URL }}"
+            --set-env-vars DATABASE_URL="${{ secrets.DATABASE_URL }}",CORS_ORIGINS='["https://cryptopulse1.vercel.app","http://localhost:5173","http://localhost:3000"]'
+
