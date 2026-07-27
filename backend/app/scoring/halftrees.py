@@ -46,8 +46,9 @@ logger = logging.getLogger(__name__)
 N_TREES: int = 25
 
 # Tree depth. Controls the granularity of the density approximation.
-# Height 15 gives 2^15 = 32768 potential partitions — sufficient for price data.
-HEIGHT: int = 15
+# Height 10 gives 2^10 = 1024 potential partitions — more than sufficient for univariate price data.
+HEIGHT: int = 10
+
 
 # Sliding window size for the mass estimator. HST tracks mass in the last
 # WINDOW_SIZE observations to adapt to non-stationarity.
