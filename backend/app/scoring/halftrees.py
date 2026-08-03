@@ -70,8 +70,8 @@ class HalfSpaceTreesScorer(BaseScorer):
 
     The MinMaxScaler is required because HST partitions the feature space using
     uniform random splits — it assumes features are bounded in [0, 1]. Without
-    scaling, the split points would be meaningless for price data with
-    unbounded range (e.g., BTC at $60k).
+    scaling, the split points would be meaningless for features with
+    unbounded ranges. It now scales the 4 stationary features.
 
     Attributes:
         threshold:  Anomaly score cutoff (score > threshold → is_anomaly).
@@ -110,22 +110,22 @@ class HalfSpaceTreesScorer(BaseScorer):
             ),
         )
 
-    def score(self, price: float) -> tuple[float, bool]:
+    def score(self, features: dict[str, float]) -> tuple[float, bool]:
         """
-        Score a price tick and update the internal model.
+        Score a feature observation and update the internal model.
 
         Calls score_one() before learn_one() so the current observation
         does not influence its own score (same look-ahead bias prevention
         as z-score, though HST's mass-based scoring is less sensitive to this).
 
         Args:
-            price: Current price in USD.
+            features: Dictionary of stationary features.
 
         Returns:
             Tuple of (anomaly_score: float, is_anomaly: bool).
             anomaly_score is normalised to [0, 1].
         """
-        features = {"price": price}
+
 
         # score_one() computes the anomaly score from the inner HST model.
         # The Pipeline delegates to ThresholdFilter.score_one(), which delegates

@@ -54,7 +54,7 @@ class BaseScorer(ABC):
     """
 
     @abstractmethod
-    def score(self, price: float) -> tuple[float, bool]:
+    def score(self, features: dict[str, float]) -> tuple[float, bool]:
         """
         Score a single price observation.
 
@@ -62,7 +62,7 @@ class BaseScorer(ABC):
         the score to avoid look-ahead bias.
 
         Args:
-            price: Price in USD for the current tick.
+            features: Dictionary of stationary features (ret, vol, z_ret, vol_delta).
 
         Returns:
             Tuple of (anomaly_score: float, is_anomaly: bool).
@@ -230,6 +230,7 @@ class ScoringWorker:
         self._running = False
         self._ticks_processed: int = 0
         self._started_at: datetime = datetime.now(timezone.utc)
+        self._extractors: dict[str, FeatureExtractor] = {}
 
     async def start(self) -> None:
         """
@@ -287,16 +288,27 @@ class ScoringWorker:
         Score a single PriceTick using the coin's scorer.
 
         Retrieves (or lazily creates) the scorer for this coin and calls
-        score() with the tick's price. Wraps the result in a ScoredTick.
+        score() with the tick's extracted features. Wraps the result in a ScoredTick.
 
         Args:
             tick: Raw price tick from the ingestion worker.
 
         Returns:
-            ScoredTick: Tick enriched with anomaly score and classification.
+            ScoredTick: Tick enriched with anomaly score and classification. During warmup, returns score 0.
         """
-        scorer = self._registry.get_or_create(tick.coin_id)
-        anomaly_score, is_anomaly = scorer.score(tick.price_usd)
+        from app.scoring.features import FeatureExtractor
+        if tick.coin_id not in self._extractors:
+            self._extractors[tick.coin_id] = FeatureExtractor()
+        
+        extractor = self._extractors[tick.coin_id]
+        features = extractor.extract(tick.price_usd, tick.volume_24h)
+        
+        if features is None:
+            logger.debug("Skipping scoring during feature warmup", extra={"coin_id": tick.coin_id})
+            anomaly_score, is_anomaly = 0.0, False
+        else:
+            scorer = self._registry.get_or_create(tick.coin_id)
+            anomaly_score, is_anomaly = scorer.score(features)
 
         return ScoredTick(
             tick=tick,

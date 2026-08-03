@@ -106,9 +106,9 @@ class ZScoreScorer(BaseScorer):
         min_std = abs(mean) * 0.001 if mean != 0.0 else 1.0
         return max(std, min_std)
 
-    def score(self, price: float) -> tuple[float, bool]:
+    def score(self, features: dict[str, float]) -> tuple[float, bool]:
         """
-        Score a single price tick and update rolling statistics.
+        Score a single feature observation and update rolling statistics.
 
         Statistics are updated AFTER computing the score to prevent the current
         observation from influencing its own anomaly decision (look-ahead bias).
@@ -117,7 +117,7 @@ class ZScoreScorer(BaseScorer):
         suppressed regardless of z-score — stats are not yet representative.
 
         Args:
-            price: Current price in USD.
+            features: Current features dict (must contain 'z_ret').
 
         Returns:
             Tuple of (z_score: float, is_anomaly: bool).
@@ -125,10 +125,12 @@ class ZScoreScorer(BaseScorer):
         # Compute score BEFORE updating window (avoids look-ahead bias)
         current_mean = self._rolling_mean()
         current_std = self._rolling_std()
-        z_score = abs(price - current_mean) / current_std
+        
+        z_ret = features["z_ret"]
+        z_score = abs(z_ret - current_mean) / current_std
 
-        # Update window with current price
-        self._window.append(price)
+        # Update window with current z_ret
+        self._window.append(z_ret)
         self._n_seen += 1
 
         # Suppress anomaly flags during warm-up: insufficient data for reliable stats

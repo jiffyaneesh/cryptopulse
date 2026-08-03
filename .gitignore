@@ -43,3 +43,7 @@ agent.sh
 
 
 sessions/
+
+# Data
+backend/data/klines/
+backend/data/backtest_results/
