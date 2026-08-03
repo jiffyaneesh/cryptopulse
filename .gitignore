@@ -40,3 +40,6 @@ __pycache__/
 .env.local
 .env.*.local
 agent.sh
+
+
+sessions/

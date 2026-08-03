@@ -54,6 +54,10 @@ logger = logging.getLogger(__name__)
 RAW_QUEUE_MAXSIZE: int = 100
 SCORED_QUEUE_MAXSIZE: int = 100
 
+# Max seconds to wait for the pipeline to drain on shutdown before cancelling.
+# Cloud Run sends SIGKILL 10s after SIGTERM, so stay well under that.
+SHUTDOWN_DRAIN_TIMEOUT_SECONDS: float = 5.0
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
@@ -128,16 +132,28 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # ── Shutdown (runs on SIGTERM or Ctrl+C) ─────────────────────────────────
     logger.info("CryptoPulse backend shutting down")
 
+    # Stop ingestion first so no new ticks enter the pipeline.
     await poller.stop()
-    scoring_worker.stop()
 
-    # Cancel background tasks and wait for them to finish cleanly
-    for task in [scoring_task, broadcast_task]:
-        task.cancel()
-        try:
-            await task
-        except asyncio.CancelledError:
-            pass
+    # Then send the shutdown sentinel through the pipeline. The sentinel travels
+    # raw_queue → ScoringWorker → scored_queue → broadcast_loop, so every tick
+    # already in flight is scored and persisted before the tasks exit.
+    await scoring_worker.stop()
+
+    try:
+        await asyncio.wait_for(
+            asyncio.gather(scoring_task, broadcast_task),
+            timeout=SHUTDOWN_DRAIN_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError:
+        # A stuck DB write or slow client must not block shutdown forever.
+        logger.warning("Pipeline drain timed out, cancelling tasks")
+        for task in [scoring_task, broadcast_task]:
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
 
     await db_manager.disconnect()
     logger.info("Shutdown complete")

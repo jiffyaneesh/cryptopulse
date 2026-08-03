@@ -1,0 +1,156 @@
+%-------------------------
+% AI Engineer Resume - Aneesh Sharma
+%------------------------
+
+\documentclass[letterpaper,11pt]{article}
+
+\usepackage{latexsym}
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage{marvosym}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{verbatim}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage[english]{babel}
+\usepackage{tabularx}
+\input{glyphtounicode}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\addtolength{\oddsidemargin}{-0.5in}
+\addtolength{\evensidemargin}{-0.5in}
+\addtolength{\textwidth}{1in}
+\addtolength{\topmargin}{-0.7in}
+\addtolength{\textheight}{1.5in}
+
+\urlstyle{same}
+\raggedbottom
+\raggedright
+\setlength{\tabcolsep}{0in}
+
+\titleformat{\section}{
+  \vspace{-2pt}\scshape\raggedright\large
+}{}{0em}{}[\color{black}\titlerule \vspace{-4pt}]
+
+\pdfgentounicode=1
+
+%-------------------------
+% Custom commands
+
+\newcommand{\resumeItem}[1]{
+  \item\small{#1}
+}
+
+\newcommand{\resumeSubheading}[4]{
+  \vspace{3pt}\item
+    \begin{tabular*}{0.97\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & \small #2 \\
+      \textit{\small#3} & \textit{\small #4} \\
+    \end{tabular*}\vspace{1pt}
+}
+
+\newcommand{\resumeProjectHeading}[2]{
+  \vspace{3pt}\item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \small#1 & \small #2 \\
+    \end{tabular*}\vspace{1pt}
+}
+
+\renewcommand\labelitemii{$\vcenter{\hbox{\tiny$\bullet$}}$}
+
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.15in, label={}, itemsep=1pt, parsep=0pt]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}\vspace{1pt}}
+\newcommand{\resumeItemListStart}{\begin{itemize}[itemsep=1pt, parsep=0pt, topsep=1pt]}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{1pt}}
+
+%-------------------------------------------
+\begin{document}
+
+%----------HEADING----------
+\begin{center}
+    \textbf{\Large \scshape Aneesh Sharma} \\ \vspace{5pt}
+    \small +91 7206734591 $|$
+    \href{mailto:aneeshsharma1024@gmail.com}{\underline{aneeshsharma1024@gmail.com}} $|$
+    \href{https://linkedin.com/in/helloaneesh}{\underline{linkedin.com/in/helloaneesh}} $|$
+    \href{https://github.com/aneeshsharma72067}{\underline{github.com/aneeshsharma72067}}
+\end{center}
+
+\vspace{-6pt}
+\begin{center}
+\small AI Engineer with 1+ year shipping production systems --- LLM pipelines, RAG architectures, AI agents, and event-driven tooling.
+\end{center}
+\vspace{-6pt}
+
+%-----------EXPERIENCE-----------
+\section{Experience}
+  \resumeSubHeadingListStart
+    \resumeSubheading
+      {ResilienceSoft}{Feb 2025 -- Present}
+      {AI Integration Engineer / Junior Software Developer}{}
+    \resumeItemListStart
+      \resumeItem{Integrated \textbf{LLM-powered AI agents and MCP servers} into CI/CD workflows --- automated PR summarization, test scaffold generation, and code review triage, cutting average feature turnaround by \textbf{\textasciitilde2 days per sprint}.}
+      \resumeItem{Built \textbf{structured prompt chains with function calling and tool use} to extract context from code diffs, classify change intent, and route tasks to the right agent --- reducing manual triage from hours to seconds.}
+      \resumeItem{Engineered \textbf{FHIR-compliant backend schemas} for a healthcare AI platform, enabling LLM-readable patient records and interoperable storage and querying across services.}
+      \resumeItem{Resolved \textbf{N+1 query bottlenecks} and rewrote application-layer filters as optimized SQL, cutting API response times from \textbf{10+ seconds to under 1 second}, unblocking downstream AI processing pipelines.}
+      \resumeItem{Implemented \textbf{background workers, cron jobs, and async email workflows} powering scheduled AI report delivery and automated data ingestion pipelines.}
+    \resumeItemListEnd
+  \resumeSubHeadingListEnd
+
+%-----------PROJECTS-----------
+\section{Projects}
+    \resumeSubHeadingListStart
+
+      \resumeProjectHeading
+        {\href{https://reposage-web.vercel.app/}{\textbf{Reposage --- AI Workflow Analyzer}} $|$ \emph{Next.js, Fastify, BullMQ, Redis, Postgres, Azure, OpenAI}}{Jan -- Mar 2026}
+        \resumeItemListStart
+          \resumeItem{Built an \textbf{event-driven LLM pipeline} that ingests GitHub webhook events and runs \textbf{multi-step tool-use chains} to detect risks --- large commits, dependency bloat, and architectural drift --- surfacing results on a real-time Next.js dashboard.}
+          \resumeItem{Designed \textbf{structured prompting and tool-use chains} for multi-step code analysis: extracting file diffs, summarizing intent, scoring risk, and persisting structured JSON to Postgres via Prisma.}
+          \resumeItem{Deployed \textbf{distributed AI workers on Azure Container Apps}; async BullMQ queuing handles burst load --- webhook payloads processed in \textbf{under 100ms} end-to-end.}
+        \resumeItemListEnd
+
+      \resumeProjectHeading
+        {\href{https://github.com/aneeshsharma72067/cryptopulse}{\textbf{CryptoPulse --- Real-Time Streaming Anomaly Detection Engine}} $|$ \emph{FastAPI, Python, River, Asyncio, React, WebSockets, Docker, SQLite}}{Jun -- Jul 2026}
+        \resumeItemListStart
+          \resumeItem{Engineered a \textbf{high-throughput streaming anomaly detection engine} executing real-time online ML inference on live crypto ticker streams via \textbf{FastAPI, WebSockets, and River streaming algorithms}.}
+          \resumeItem{Implemented \textbf{O(1) streaming models} (Half-Space Trees \& Rolling Z-Score) with adaptive thresholding, online feature scaling, and continuous concept drift protection under sub-millisecond latency.}
+          \resumeItem{Architected a resilient async ingestion pipeline using \textbf{asyncio concurrency, Tenacity exponential backoff}, and non-blocking \textbf{aiosqlite WAL persistence}, serving real-time anomaly alerts to React clients.}
+        \resumeItemListEnd
+
+      \resumeProjectHeading
+        {\href{https://repeto.dev}{\textbf{Repeto.dev}} $|$ \emph{Hono, Cloudflare Workers, Supabase, Resend} $|$ \href{https://repeto.dev}{\underline{repeto.dev}}}{Mar 2026}
+        \resumeItemListStart
+          \resumeItem{Launched a \textbf{production SaaS} delivering LeetCode problems via AI-personalized daily emails; architected on \textbf{Cloudflare Workers} for globally distributed, low-latency scheduling.}
+          \resumeItem{Acquired \textbf{20 users within 24 hours of launch}; actively growing with zero paid acquisition.}
+        \resumeItemListEnd
+
+    \resumeSubHeadingListEnd
+
+%-----------TECHNICAL SKILLS-----------
+\section{Technical Skills}
+ \begin{itemize}[leftmargin=0.15in, label={}, itemsep=2pt, parsep=0pt]
+   \small{\item{
+     \textbf{AI / ML}{: LLM APIs (OpenAI, Anthropic Claude), Online/Streaming Machine Learning (River), LangChain, RAG, Prompt Engineering, Function Calling, Embeddings, Vector DBs (Chroma, Pinecone, pgvector), AI Agents, MCP Servers} \\[2pt]
+     \textbf{Languages}{: Python, TypeScript, JavaScript, SQL} \\[2pt]
+     \textbf{Backend}{: FastAPI, Asyncio, Node.js, Fastify, NestJS, Hono, WebSockets, REST APIs} \\[2pt]
+     \textbf{Databases}{: PostgreSQL (pgvector), SQLite (aiosqlite), MongoDB, Redis, Prisma, Supabase} \\[2pt]
+     \textbf{Cloud \& DevOps}{: Docker, Azure Container Apps, Cloudflare Workers, Vercel, Nginx, GitHub Actions} \\[2pt]
+     \textbf{Architecture}{: Streaming Anomaly Detection, Event-Driven Architectures, Agentic Workflows, Async Pipelines, Serverless}
+   }}
+ \end{itemize}
+
+%-----------EDUCATION-----------
+\section{Education}
+  \resumeSubHeadingListStart
+    \resumeSubheading
+      {Chhattisgarh Swami Vivekananda Technical University}{Bhilai, Chhattisgarh}
+      {B.Tech in Computer Science Engineering $|$ \textbf{CGPA: 8.1/10}}{Nov 2021 -- Jul 2025}
+  \resumeSubHeadingListEnd
+
+%-------------------------------------------
+\end{document}

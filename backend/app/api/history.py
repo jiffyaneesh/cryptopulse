@@ -47,7 +47,6 @@ class TickRecord(BaseModel):
     symbol: str
     name: str
     price_usd: float
-    market_cap: float
     volume_24h: float
     price_change_24h: float
     anomaly_score: float

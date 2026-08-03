@@ -28,6 +28,7 @@
  */
 
 import { create } from "zustand";
+import { subscribeWithSelector } from "zustand/middleware";
 
 /**
  * Maximum number of ticks stored per coin in tickHistory.
@@ -42,8 +43,7 @@ const MAX_HISTORY_PER_COIN = 500;
  * @property {string}  symbol           - Ticker symbol (e.g., "BTC").
  * @property {string}  name             - Human-readable name.
  * @property {number}  price_usd        - Current price in USD.
- * @property {number}  market_cap       - Market cap in USD.
- * @property {number}  volume_24h       - 24h volume in USD.
+ * @property {number}  volume_24h       - 24h quote volume in USD.
  * @property {number}  price_change_24h - 24h price change percentage.
  * @property {number}  anomaly_score    - Normalised score ∈ [0, 1] (HST) or z-score.
  * @property {boolean} is_anomaly       - True when score exceeds threshold.
@@ -53,7 +53,11 @@ const MAX_HISTORY_PER_COIN = 500;
  * @property {string}  scored_at        - ISO 8601 UTC timestamp.
  */
 
-const useTickStore = create((set, get) => ({
+// subscribeWithSelector is REQUIRED for the two-argument
+// subscribe(selector, callback) form used by LiveChart. Zustand v5's plain
+// subscribe only accepts a single (state, prevState) listener — passing a
+// selector without this middleware silently never invokes the callback.
+const useTickStore = create(subscribeWithSelector((set, get) => ({
   /**
    * Tick history keyed by coin_id.
    * Each entry is an array of ScoredTick, oldest-first, capped at MAX_HISTORY_PER_COIN.
@@ -164,6 +168,6 @@ const useTickStore = create((set, get) => ({
     set((state) => ({
       anomalyCounts: { ...state.anomalyCounts, [coin_id]: 0 },
     })),
-}));
+})));
 
 export default useTickStore;

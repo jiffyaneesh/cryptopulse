@@ -29,16 +29,15 @@ async def insert_tick(conn: DatabaseConnectionAdapter, scored_tick: ScoredTick) 
     await conn.execute(
         """
         INSERT INTO ticks (
-            coin_id, symbol, name, price_usd, market_cap, volume_24h,
+            coin_id, symbol, name, price_usd, volume_24h,
             price_change_24h, anomaly_score, is_anomaly, model_type,
             threshold, polled_at, scored_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         tick.coin_id,
         tick.symbol,
         tick.name,
         tick.price_usd,
-        tick.market_cap,
         tick.volume_24h,
         tick.price_change_24h,
         scored_tick.anomaly_score,
@@ -62,7 +61,7 @@ async def get_history(
     """
     rows = await conn.fetchall(
         """
-        SELECT coin_id, symbol, name, price_usd, market_cap, volume_24h,
+        SELECT coin_id, symbol, name, price_usd, volume_24h,
                price_change_24h, anomaly_score, is_anomaly, model_type,
                threshold, polled_at, scored_at
         FROM ticks

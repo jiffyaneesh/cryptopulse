@@ -34,6 +34,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app.db import queries
 from app.ingestion.models import ScoredTick
+from app.scoring.scorer import SHUTDOWN_SENTINEL
 
 logger = logging.getLogger(__name__)
 
@@ -142,12 +143,17 @@ async def broadcast_loop(scored_queue: asyncio.Queue, db_conn) -> None:
     logger.info("Broadcast loop started")
 
     while True:
-        try:
-            scored_tick: ScoredTick = await asyncio.wait_for(
-                scored_queue.get(), timeout=1.0
-            )
-        except asyncio.TimeoutError:
-            continue
+        # Plain get() — the ScoringWorker forwards SHUTDOWN_SENTINEL downstream
+        # on shutdown, which is what breaks this loop. Polling with a timeout
+        # would risk losing a tick to the cancelled get() on timeout.
+        item = await scored_queue.get()
+
+        if item is SHUTDOWN_SENTINEL:
+            scored_queue.task_done()
+            logger.info("Broadcast loop received shutdown sentinel")
+            break
+
+        scored_tick: ScoredTick = item
 
         try:
             # Persist before broadcasting so the history endpoint is always

@@ -38,17 +38,20 @@ class PriceTick:
         symbol:           Ticker symbol (e.g. "BTC"). Uppercased on init.
         name:             Human-readable name (e.g. "Bitcoin").
         price_usd:        Current price in USD.
-        market_cap:       Market capitalisation in USD.
-        volume_24h:       24-hour trading volume in USD.
+        volume_24h:       24-hour quote volume in USD.
         price_change_24h: 24-hour price change percentage.
         polled_at:        UTC datetime when this tick was fetched.
+
+    Note: market_cap is deliberately absent. The Binance ticker endpoint does
+    not expose it, and carrying a permanently-zero field through the pipeline
+    is worse than not having it. Add it back only alongside a source that
+    actually provides it.
     """
 
     coin_id: str
     symbol: str
     name: str
     price_usd: float
-    market_cap: float
     volume_24h: float
     price_change_24h: float
     polled_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
@@ -73,7 +76,6 @@ class PriceTick:
             "symbol": self.symbol,
             "name": self.name,
             "price_usd": self.price_usd,
-            "market_cap": self.market_cap,
             "volume_24h": self.volume_24h,
             "price_change_24h": self.price_change_24h,
             "polled_at": self.polled_at.isoformat(),
@@ -128,7 +130,6 @@ class ScoredTick:
             "symbol": self.tick.symbol,
             "name": self.tick.name,
             "price_usd": self.tick.price_usd,
-            "market_cap": self.tick.market_cap,
             "volume_24h": self.tick.volume_24h,
             "price_change_24h": self.tick.price_change_24h,
             "polled_at": self.tick.polled_at.isoformat(),

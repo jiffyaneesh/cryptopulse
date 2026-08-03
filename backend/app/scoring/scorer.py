@@ -35,6 +35,12 @@ from app.ingestion.models import PriceTick, ScoredTick
 
 logger = logging.getLogger(__name__)
 
+# Sentinel pushed onto a queue to signal "no more items, exit cleanly".
+# Used instead of polling with asyncio.wait_for(queue.get(), timeout=...):
+# a timed-out get() is cancelled, and if an item arrived in the same tick of
+# the event loop it is consumed by the cancelled future and lost.
+SHUTDOWN_SENTINEL = object()
+
 
 class BaseScorer(ABC):
     """
@@ -227,7 +233,7 @@ class ScoringWorker:
 
     async def start(self) -> None:
         """
-        Run the scoring consumer loop until stop() is called.
+        Run the scoring consumer loop until the shutdown sentinel is received.
 
         Pulls PriceTicks from in_queue, scores them via the registry,
         and pushes ScoredTick objects to out_queue. Errors on individual
@@ -237,16 +243,21 @@ class ScoringWorker:
         self._started_at = datetime.now(timezone.utc)
         logger.info("ScoringWorker started")
 
-        while self._running:
-            try:
-                # Block waiting for the next tick. Use timeout to allow clean shutdown
-                # when stop() sets _running=False while the queue is empty.
-                tick: PriceTick = await asyncio.wait_for(
-                    self._in_queue.get(), timeout=1.0
-                )
-            except asyncio.TimeoutError:
-                # No tick available — loop again to check _running flag.
-                continue
+        while True:
+            # Plain get() — blocks indefinitely until an item is available.
+            # stop() enqueues SHUTDOWN_SENTINEL to break out, so no polling
+            # timeout is needed and no tick can be lost to a cancelled get().
+            item = await self._in_queue.get()
+
+            if item is SHUTDOWN_SENTINEL:
+                self._in_queue.task_done()
+                # Propagate shutdown downstream so broadcast_loop drains and
+                # exits too, rather than being hard-cancelled mid-write.
+                await self._out_queue.put(SHUTDOWN_SENTINEL)
+                logger.info("ScoringWorker received shutdown sentinel")
+                break
+
+            tick: PriceTick = item
 
             try:
                 scored = self._score_tick(tick)
@@ -260,9 +271,15 @@ class ScoringWorker:
             finally:
                 self._in_queue.task_done()
 
-    def stop(self) -> None:
-        """Signal the scoring loop to exit on the next iteration."""
+    async def stop(self) -> None:
+        """
+        Signal the scoring loop to drain and exit.
+
+        Enqueues SHUTDOWN_SENTINEL rather than flipping a flag, so any ticks
+        already queued ahead of it are scored before the loop exits.
+        """
         self._running = False
+        await self._in_queue.put(SHUTDOWN_SENTINEL)
         logger.info("ScoringWorker stop requested")
 
     def _score_tick(self, tick: PriceTick) -> ScoredTick:

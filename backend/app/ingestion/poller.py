@@ -92,21 +92,42 @@ class CoinGeckoPoller:
         if self._client:
             await self._client.aclose()
 
+    @staticmethod
+    def _build_pair_map(coins: list[str]) -> dict[str, str]:
+        """
+        Map each tracked coin ID to its Binance symbol pair.
+
+        Args:
+            coins: List of coin IDs to track.
+
+        Returns:
+            dict: Binance pair (e.g. "BTCUSDT") → coin_id (e.g. "bitcoin").
+        """
+        pairs_to_coin_id: dict[str, str] = {}
+        for coin_id in coins:
+            info = COIN_MAPPING.get(coin_id)
+            pair = info["pair"] if info else f"{coin_id[:4].upper()}USDT"
+            pairs_to_coin_id[pair] = coin_id
+        return pairs_to_coin_id
+
     async def _poll_batch_loop(self) -> None:
         """Infinite loop that polls all configured symbols in a single request."""
         settings = get_settings()
 
-        # Map active coin IDs to their expected Binance symbol pairs
-        pairs_to_coin_id = {}
-        for coin_id in settings.coins_to_track:
-            info = COIN_MAPPING.get(coin_id)
-            pair = info["pair"] if info else f"{coin_id[:4].upper()}USDT"
-            pairs_to_coin_id[pair] = coin_id
-
-        # Format symbols parameter as a URL-safe JSON list (e.g. ["BTCUSDT","ETHUSDT"])
-        symbols_param = "[" + ",".join(f'"{p}"' for p in pairs_to_coin_id.keys()) + "]"
-
         while self._running:
+            # Rebuild the pair map every cycle: POST /api/config can mutate
+            # settings.coins_to_track at runtime, and the poller must pick up
+            # the new list. Building this once before the loop would silently
+            # pin the poller to the startup coin list forever.
+            pairs_to_coin_id = self._build_pair_map(settings.coins_to_track)
+            if not pairs_to_coin_id:
+                logger.warning("No coins configured to track, skipping poll cycle")
+                await asyncio.sleep(settings.poll_interval_seconds)
+                continue
+
+            # Format symbols parameter as a URL-safe JSON list (e.g. ["BTCUSDT","ETHUSDT"])
+            symbols_param = "[" + ",".join(f'"{p}"' for p in pairs_to_coin_id) + "]"
+
             try:
                 ticks = await self._fetch_prices_batch(symbols_param, pairs_to_coin_id)
                 for tick in ticks:
@@ -164,7 +185,6 @@ class CoinGeckoPoller:
                     symbol=symbol,
                     name=name,
                     price_usd=float(coin_data.get("lastPrice", 0.0)),
-                    market_cap=0.0,
                     volume_24h=float(coin_data.get("quoteVolume", 0.0)),
                     price_change_24h=float(coin_data.get("priceChangePercent", 0.0)),
                     polled_at=datetime.now(timezone.utc),
