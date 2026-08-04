@@ -4,7 +4,7 @@
  * Main terminal layout component for CryptoPulse anomaly detection.
  */
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import axios from "axios";
 
 import Navbar from "../components/layout/Navbar";
@@ -16,6 +16,7 @@ import OpenPositions from "../components/terminal/OpenPositions";
 import LiveChart from "../components/dashboard/LiveChart";
 import SensitivitySlider from "../components/dashboard/SensitivitySlider";
 import PanelFrame from "../components/layout/PanelFrame";
+import Tooltip from "../components/ui/Tooltip";
 import useWebSocket from "../hooks/useWebSocket";
 import useStats from "../hooks/useStats";
 import useTickStore from "../store/tickStore";
@@ -34,6 +35,112 @@ const DEFAULT_COINS = [
   "polkadot",
   "dogecoin",
 ];
+
+/** Measures time from last addTick call to estimate feed latency */
+function useFeedLatency() {
+  const lastTickTime = useRef(null);
+  const [latencyMs, setLatencyMs] = useState(null);
+
+  useEffect(() => {
+    return useTickStore.subscribe(
+      (state) => state.latestByCoins,
+      () => {
+        const now = Date.now();
+        if (lastTickTime.current) {
+          setLatencyMs(now - lastTickTime.current);
+        }
+        lastTickTime.current = now;
+      }
+    );
+  }, []);
+
+  return latencyMs;
+}
+
+function DiagnosticsPanel({ stats, activeCoin }) {
+  const wsStatus       = useTickStore((state) => state.wsStatus);
+  const reconnectCount = useTickStore((state) => state.reconnectCount);
+  const tickHistory    = useTickStore((state) => state.tickHistory);
+  const latencyMs      = useFeedLatency();
+
+  // Total ticks buffered across all coins
+  const totalBuffered = Object.values(tickHistory).reduce((sum, arr) => sum + arr.length, 0);
+
+  // Anomaly rate
+  const anomalyRate = stats?.anomaly_rate_pct != null
+    ? `${stats.anomaly_rate_pct}%`
+    : "---";
+
+  // WS status display
+  const wsColor = {
+    connected:    "var(--color-profit)",
+    connecting:   "var(--color-warning)",
+    reconnecting: "var(--color-warning)",
+    disconnected: "var(--color-loss)",
+  }[wsStatus] || "var(--text-muted)";
+
+  const wsLabel = wsStatus === "reconnecting"
+    ? `RECONNECTING #${reconnectCount}`
+    : wsStatus.toUpperCase();
+
+  const rows = [
+    {
+      label: "WEBSOCKET",
+      value: wsLabel,
+      valueStyle: { color: wsColor, fontWeight: "bold" },
+      tooltip: "Live WebSocket connection to the backend scoring worker.",
+    },
+    {
+      label: "FEED LATENCY",
+      value: latencyMs ? `~${latencyMs}ms` : "---",
+      valueStyle: { color: latencyMs && latencyMs < 2000 ? "var(--color-profit)" : "var(--color-warning)", fontWeight: "bold" },
+      tooltip: "Approximate time between ticks arriving. Backend polls ~every 10s.",
+    },
+    {
+      label: "TICK BUFFER",
+      value: `${totalBuffered} ticks`,
+      valueStyle: { color: "var(--text-primary)", fontWeight: "bold" },
+      tooltip: "Total ticks buffered in memory across all tracked coins (max 500/coin).",
+    },
+    {
+      label: "ANOMALY RATE",
+      value: anomalyRate,
+      valueStyle: { color: "var(--color-warning)", fontWeight: "bold" },
+      tooltip: "Percentage of all ticks flagged as anomalies since session start.",
+    },
+    {
+      label: "ACTIVE COINS",
+      value: stats?.tracked_coins?.length ?? DEFAULT_COINS.length,
+      valueStyle: { color: "var(--text-primary)" },
+      tooltip: "Number of coins currently tracked and scored.",
+    },
+    {
+      label: "THROUGHPUT",
+      value: stats?.throughput_per_minute != null
+        ? `${stats.throughput_per_minute.toFixed(1)}/min`
+        : "---",
+      valueStyle: { color: "var(--text-primary)" },
+      tooltip: "Ticks processed per minute by the scoring worker.",
+    },
+  ];
+
+  return (
+    <PanelFrame title="DIAGNOSTICS" accentTitle="// HEALTH">
+      <div style={{ padding: "var(--sp-3)", fontSize: "0.65rem", display: "flex", flexDirection: "column", gap: "var(--sp-2)" }}>
+        {rows.map((row) => (
+          <div key={row.label} className="flex justify-between" style={{ alignItems: "center" }}>
+            <Tooltip text={row.tooltip} position="top" maxWidth="220px">
+              <span className="text-muted" style={{ cursor: "help", borderBottom: "1px dashed #333" }}>
+                {row.label} ⓘ
+              </span>
+            </Tooltip>
+            <span style={row.valueStyle}>{row.value}</span>
+          </div>
+        ))}
+      </div>
+    </PanelFrame>
+  );
+}
 
 function Dashboard() {
   const [activeCoin, setActiveCoin] = useState("bitcoin");
@@ -131,26 +238,7 @@ function Dashboard() {
 
         {/* Bottom Right Panel — System Diagnostics */}
         <div className="terminal-grid__bottom3">
-          <PanelFrame title="DIAGNOSTICS" accentTitle="// HEALTH">
-            <div style={{ padding: "var(--sp-3)", fontSize: "0.65rem", display: "flex", flexDirection: "column", gap: "var(--sp-2)" }}>
-              <div className="flex justify-between">
-                <span className="text-muted">LATENCY:</span>
-                <span className="text-profit font-bold">~12ms</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted">WEBSOCKET:</span>
-                <span className="text-profit font-bold">CONNECTED</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted">MEMORY:</span>
-                <span className="text-primary font-bold">14.2MB</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted">BUFFER:</span>
-                <span className="text-primary font-bold">200 Ticks</span>
-              </div>
-            </div>
-          </PanelFrame>
+          <DiagnosticsPanel stats={stats} activeCoin={activeCoin} />
         </div>
       </div>
     </div>
