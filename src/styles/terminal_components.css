@@ -23,11 +23,11 @@
   background: var(--bg-panel-header);
   border-bottom: var(--border-subtle);
   flex-shrink: 0;
-  height: 24px;
+  height: 28px;
 }
 
 .panel-frame__title {
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -52,13 +52,13 @@
 .ticker-bar {
   background: #020202;
   border-bottom: 1px solid var(--border-color);
-  height: 32px;
+  height: 38px;
   display: flex;
   align-items: center;
   overflow: hidden;
   position: relative;
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.8rem;
 }
 
 .ticker-bar__status {
@@ -95,7 +95,7 @@
 .ticker-item {
   display: inline-flex;
   align-items: center;
-  gap: var(--sp-2);
+  gap: var(--sp-3);
   padding: 0 var(--sp-4);
   border-right: 1px dashed #1a1a1a;
   cursor: pointer;
@@ -124,14 +124,14 @@
   display: flex;
   flex-direction: column;
   gap: var(--sp-3);
-  padding: var(--sp-3);
-  font-size: 0.7rem;
+  padding: var(--sp-4);
+  font-size: 0.8rem;
 }
 
 .market-stat-group {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-1);
+  gap: var(--sp-2);
 }
 
 .market-stat-row {
@@ -139,12 +139,12 @@
   justify-content: space-between;
   align-items: center;
   padding: var(--sp-1) 0;
-  border-bottom: 1px dotted #151515;
+  border-bottom: 1px dotted #181818;
 }
 
 .market-stat-label {
   color: var(--text-muted);
-  font-size: 0.65rem;
+  font-size: 0.72rem;
 }
 
 .market-stat-value {
@@ -156,14 +156,14 @@
   display: flex;
   flex-direction: column;
   gap: var(--sp-3);
-  padding: var(--sp-3);
+  padding: var(--sp-4);
 }
 
 .confidence-item {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-1);
-  padding: var(--sp-2);
+  gap: var(--sp-2);
+  padding: var(--sp-3);
   background: #050505;
   border: 1px solid #141414;
 }
@@ -171,7 +171,7 @@
 .confidence-item__header {
   display: flex;
   justify-content: space-between;
-  font-size: 0.7rem;
+  font-size: 0.78rem;
 }
 
 .confidence-item__name {
@@ -188,7 +188,7 @@
 .trade-log {
   display: flex;
   flex-direction: column;
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   font-family: var(--font-mono);
 }
 
@@ -196,7 +196,7 @@
   display: flex;
   align-items: center;
   gap: var(--sp-3);
-  padding: var(--sp-1) var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
   border-bottom: 1px solid #0c0c0c;
 }
 
@@ -211,7 +211,7 @@
 .trade-log__coin {
   color: var(--text-secondary);
   font-weight: 600;
-  width: 40px;
+  width: 48px;
 }
 
 .trade-log__msg {
@@ -231,7 +231,7 @@
 .positions-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   text-align: left;
 }
 
@@ -241,7 +241,7 @@
   padding: var(--sp-2) var(--sp-3);
   border-bottom: 1px solid var(--border-color);
   text-transform: uppercase;
-  font-size: 0.6rem;
+  font-size: 0.7rem;
 }
 
 .positions-table td {

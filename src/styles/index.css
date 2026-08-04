@@ -56,7 +56,7 @@
   /* Text — monospace hierarchy */
   --text-primary:       #d4d4d4;
   --text-secondary:     #808080;
-  --text-muted:         #4a4a4a;
+  --text-muted:         #555555;
   --text-label:         var(--accent);
   --text-value:         #e8e8e8;
   --text-profit:        var(--color-profit);
@@ -77,7 +77,7 @@
   --border-accent:      1px solid var(--accent-border);
   --border-subtle:      1px solid #111111;
 
-  /* Spacing scale — tight */
+  /* Spacing scale */
   --sp-1: 2px;
   --sp-2: 4px;
   --sp-3: 6px;
@@ -118,7 +118,7 @@
 }
 
 html {
-  font-size: 13px;
+  font-size: 15px; /* Increased root font scale from 13px */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -141,8 +141,8 @@ body {
 
 /* ── Scrollbar — minimal dark ─────────────────────────────────────────────── */
 ::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
@@ -172,7 +172,7 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Label text — the ALL CAPS red headers on panels */
 .label {
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -195,12 +195,12 @@ h1, h2, h3, h4, h5, h6 {
   letter-spacing: -0.02em;
 }
 
-.mono-sm   { font-size: 0.7rem; }
-.mono-base { font-size: 0.8rem; }
-.mono-lg   { font-size: 1rem; }
-.mono-xl   { font-size: 1.3rem; }
-.mono-2xl  { font-size: 1.7rem; }
-.mono-3xl  { font-size: 2.2rem; }
+.mono-sm   { font-size: 0.8rem; }
+.mono-base { font-size: 0.95rem; }
+.mono-lg   { font-size: 1.15rem; }
+.mono-xl   { font-size: 1.45rem; }
+.mono-2xl  { font-size: 1.9rem; }
+.mono-3xl  { font-size: 2.4rem; }
 
 /* Color utilities */
 .text-accent    { color: var(--accent); }
@@ -238,7 +238,7 @@ h1, h2, h3, h4, h5, h6 {
   border-bottom: var(--border-subtle);
   flex-shrink: 0;
   gap: var(--sp-4);
-  min-height: 24px;
+  min-height: 28px;
 }
 
 .panel__header-left {
@@ -254,7 +254,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .panel__title {
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -285,8 +285,8 @@ h1, h2, h3, h4, h5, h6 {
 
 /* ── Live Dot — pulsing indicator ─────────────────────────────────────────── */
 .live-dot {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: var(--accent);
   animation: live-pulse 1.5s ease-in-out infinite;
@@ -307,12 +307,12 @@ h1, h2, h3, h4, h5, h6 {
   display: inline-flex;
   align-items: center;
   gap: var(--sp-2);
-  padding: 1px 5px;
+  padding: 2px 7px;
   background: var(--accent-bg);
   border: 1px solid var(--accent-border);
   border-radius: var(--radius);
-  font-size: 0.65rem;
-  font-weight: 500;
+  font-size: 0.75rem;
+  font-weight: 600;
   color: var(--accent);
   line-height: 1.4;
   white-space: nowrap;
@@ -372,7 +372,7 @@ h1, h2, h3, h4, h5, h6 {
 
 /* ── Confidence Bar ───────────────────────────────────────────────────────── */
 .conf-bar {
-  height: 3px;
+  height: 4px;
   background: #1a1a1a;
   border-radius: 0;
   overflow: hidden;
@@ -462,8 +462,8 @@ h1, h2, h3, h4, h5, h6 {
 /* ── Terminal Grid — main layout ──────────────────────────────────────────── */
 .terminal-grid {
   display: grid;
-  grid-template-columns: 180px 1fr 240px;
-  grid-template-rows: 32px 1fr 180px;
+  grid-template-columns: 210px 1fr 270px;
+  grid-template-rows: 38px 1fr 200px;
   grid-template-areas:
     "ticker   ticker    ticker"
     "left     chart     right"
@@ -477,7 +477,7 @@ h1, h2, h3, h4, h5, h6 {
 @media (max-width: 1100px) {
   .terminal-grid {
     grid-template-columns: 1fr;
-    grid-template-rows: 32px 1fr auto auto;
+    grid-template-rows: 38px 1fr auto auto;
     grid-template-areas:
       "ticker"
       "chart"
@@ -491,7 +491,7 @@ h1, h2, h3, h4, h5, h6 {
 
 @media (min-width: 1100px) and (max-width: 1400px) {
   .terminal-grid {
-    grid-template-columns: 160px 1fr 200px;
+    grid-template-columns: 180px 1fr 230px;
   }
 }
 

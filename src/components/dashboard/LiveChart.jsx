@@ -27,9 +27,9 @@ function LiveChart({ coinId, className = "" }) {
     chartRef.current = createChart(containerRef.current, {
       layout: {
         background: { color: "#050505" },
-        textColor: "#808080",
+        textColor: "#a0a0a0",
         fontFamily: "'JetBrains Mono', monospace",
-        fontSize: 10,
+        fontSize: 12,
       },
       grid: {
         vertLines: { color: "rgba(255, 26, 26, 0.04)", style: LineStyle.Dotted },
@@ -42,11 +42,11 @@ function LiveChart({ coinId, className = "" }) {
       },
       rightPriceScale: {
         borderColor: "#1a1a1a",
-        textColor: "#666666",
+        textColor: "#a0a0a0",
       },
       timeScale: {
         borderColor: "#1a1a1a",
-        textColor: "#666666",
+        textColor: "#a0a0a0",
         timeVisible: true,
         secondsVisible: true,
       },
@@ -58,10 +58,10 @@ function LiveChart({ coinId, className = "" }) {
 
     // Crimson line series for live price data
     seriesRef.current = chartRef.current.addSeries(LineSeries, {
-      color: "#ff1a1a",    // Crimson Red — matches terminal accent color
+      color: "#ff1a1a",
       lineWidth: 2,
       crosshairMarkerVisible: true,
-      crosshairMarkerRadius: 4,
+      crosshairMarkerRadius: 5,
       crosshairMarkerBorderColor: "#ff3333",
       crosshairMarkerBackgroundColor: "#050505",
       priceLineVisible: true,
