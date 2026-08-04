@@ -1,49 +1,29 @@
 /**
  * pages/Dashboard.jsx
  * ────────────────────
- * Main live dashboard page for the CryptoPulse anomaly detection UI.
- *
- * Layout (responsive 2-column):
- *   ┌──────────────────────────────────────────────────────┐
- *   │ Navbar                                               │
- *   ├──────────────────────────────────────────────────────┤
- *   │ CoinSelector tabs                                    │
- *   ├────────────────────────────┬─────────────────────────┤
- *   │                            │ StatsPanel              │
- *   │   LiveChart (large)        ├─────────────────────────┤
- *   │                            │ SensitivitySlider       │
- *   └────────────────────────────┴─────────────────────────┘
- *
- * Responsibilities:
- *   - Mount useWebSocket hook (connects to backend WS, dispatches to store).
- *   - Manage activeCoin state and propagate to child components.
- *   - Load historical data when coin changes (pre-populates LiveChart).
- *   - Load initial model state from stats endpoint.
- *
- * NOT responsible for:
- *   - Direct WebSocket/API data handling (delegated to hooks and store).
- *   - Chart rendering (LiveChart.jsx).
- *   - Stats display (StatsPanel.jsx).
- *
- * @module pages/Dashboard
+ * Main terminal layout component for CryptoPulse anomaly detection.
  */
 
 import React, { useState, useEffect, useCallback } from "react";
-import { motion } from "framer-motion";
 import axios from "axios";
 
 import Navbar from "../components/layout/Navbar";
-import CoinSelector from "../components/layout/CoinSelector";
+import TickerBar from "../components/terminal/TickerBar";
+import MarketStructure from "../components/terminal/MarketStructure";
+import ConfidenceHeat from "../components/terminal/ConfidenceHeat";
+import TradeLog from "../components/terminal/TradeLog";
+import OpenPositions from "../components/terminal/OpenPositions";
 import LiveChart from "../components/dashboard/LiveChart";
-import StatsPanel from "../components/dashboard/StatsPanel";
 import SensitivitySlider from "../components/dashboard/SensitivitySlider";
+import PanelFrame from "../components/layout/PanelFrame";
 import useWebSocket from "../hooks/useWebSocket";
 import useStats from "../hooks/useStats";
 import useTickStore from "../store/tickStore";
 
+import "../styles/terminal_components.css";
+
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
-/** Default list of tracked coins (matches backend default settings). */
 const DEFAULT_COINS = [
   "bitcoin",
   "ethereum",
@@ -55,24 +35,14 @@ const DEFAULT_COINS = [
   "dogecoin",
 ];
 
-/**
- * Dashboard — Main real-time anomaly detection dashboard page.
- *
- * @returns {React.ReactElement}
- */
 function Dashboard() {
   const [activeCoin, setActiveCoin] = useState("bitcoin");
   const [currentModel, setCurrentModel] = useState("halftrees");
-  const [currentThreshold, setCurrentThreshold] = useState(0.75);
+  const [currentThreshold, setCurrentThreshold] = useState(0.99);
 
-  // Mount the WebSocket hook — connects once, dispatches ticks to Zustand store.
-  // The return value is only used for dev/debugging; the store is the source of truth.
   useWebSocket();
-
-  // Stats hook for getting current model/threshold state on initial load
   const { stats } = useStats();
 
-  // Sync model and threshold from stats when they first load
   useEffect(() => {
     if (stats) {
       setCurrentModel(stats.current_model);
@@ -80,18 +50,9 @@ function Dashboard() {
     }
   }, [stats?.current_model, stats?.current_threshold]);
 
-  /**
-   * Load historical ticks when the user switches coins.
-   *
-   * Fetches from GET /api/history and loads into Zustand store so
-   * LiveChart can pre-populate without waiting for the next WS tick.
-   *
-   * @param {string} coinId - The newly selected coin ID.
-   */
   const handleCoinChange = useCallback(async (coinId) => {
     setActiveCoin(coinId);
 
-    // Only fetch if we don't already have history for this coin
     const existing = useTickStore.getState().tickHistory[coinId];
     if (existing && existing.length > 0) return;
 
@@ -101,64 +62,98 @@ function Dashboard() {
       });
       useTickStore.getState().loadHistory(coinId, response.data.ticks);
     } catch (err) {
-      // History is optional — LiveChart shows "Waiting for first tick" otherwise
       console.warn(`[Dashboard] Could not load history for ${coinId}:`, err.message);
     }
   }, []);
 
-  // Load history for the initial coin on mount
   useEffect(() => {
     handleCoinChange("bitcoin");
   }, [handleCoinChange]);
 
+  const trackedCoins = stats?.tracked_coins || DEFAULT_COINS;
+
   return (
-    <motion.div
-      className="dashboard"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.4 }}
-    >
-      {/* ── Top Navigation ────────────────────────────────────────────────── */}
+    <div className="terminal-container" style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
+      <div className="scanline-overlay" />
       <Navbar
         currentModel={currentModel}
         onModelChange={(model) => setCurrentModel(model)}
       />
-
-      {/* ── Coin Selection Tabs ───────────────────────────────────────────── */}
-      <CoinSelector
-        activeCoin={activeCoin}
-        coins={stats?.tracked_coins || DEFAULT_COINS}
-        onCoinChange={handleCoinChange}
-      />
-
-      {/* ── Main Content Grid ─────────────────────────────────────────────── */}
-      <div className="dashboard__content">
-        {/* Chart — takes up most horizontal space */}
-        <motion.div
-          className="dashboard__chart-col"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
-        >
-          <LiveChart coinId={activeCoin} className="dashboard__chart" />
-        </motion.div>
-
-        {/* Sidebar — stats and controls */}
-        <motion.div
-          className="dashboard__sidebar"
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.4, delay: 0.2 }}
-        >
-          <StatsPanel activeCoin={activeCoin} />
-          <SensitivitySlider
-            initialThreshold={currentThreshold}
-            modelType={currentModel}
-            onApplied={(t) => setCurrentThreshold(t)}
+      <div className="terminal-grid" style={{ flex: 1 }}>
+        {/* Ticker Bar (Top Row) */}
+        <div className="terminal-grid__ticker">
+          <TickerBar
+            coins={trackedCoins}
+            activeCoin={activeCoin}
+            onSelectCoin={handleCoinChange}
           />
-        </motion.div>
+        </div>
+
+        {/* Left Sidebar — Market Structure */}
+        <div className="terminal-grid__left">
+          <MarketStructure activeCoin={activeCoin} stats={stats} />
+        </div>
+
+        {/* Main Price Chart (Center) */}
+        <div className="terminal-grid__chart">
+          <PanelFrame
+            title={`LIVE TELEMETRY // ${activeCoin.toUpperCase()}`}
+            accentTitle="[60FPS CANVAS]"
+            noPadding
+          >
+            <LiveChart coinId={activeCoin} className="h-full w-full" />
+          </PanelFrame>
+        </div>
+
+        {/* Right Sidebar — Confidence & Model Controls */}
+        <div className="terminal-grid__right" style={{ display: "flex", flexDirection: "column", gap: "1px" }}>
+          <div style={{ flex: 1, minHeight: 0 }}>
+            <ConfidenceHeat activeCoin={activeCoin} />
+          </div>
+          <div style={{ height: "140px" }}>
+            <SensitivitySlider
+              initialThreshold={currentThreshold}
+              modelType={currentModel}
+              onApplied={(t) => setCurrentThreshold(t)}
+            />
+          </div>
+        </div>
+
+        {/* Bottom Left Panel — Open Positions */}
+        <div className="terminal-grid__bottom1">
+          <OpenPositions activeCoin={activeCoin} />
+        </div>
+
+        {/* Bottom Center Panel — Trade Log */}
+        <div className="terminal-grid__bottom2">
+          <TradeLog activeCoin={activeCoin} />
+        </div>
+
+        {/* Bottom Right Panel — System Diagnostics */}
+        <div className="terminal-grid__bottom3">
+          <PanelFrame title="DIAGNOSTICS" accentTitle="// HEALTH">
+            <div style={{ padding: "var(--sp-3)", fontSize: "0.65rem", display: "flex", flexDirection: "column", gap: "var(--sp-2)" }}>
+              <div className="flex justify-between">
+                <span className="text-muted">LATENCY:</span>
+                <span className="text-profit font-bold">~12ms</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted">WEBSOCKET:</span>
+                <span className="text-profit font-bold">CONNECTED</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted">MEMORY:</span>
+                <span className="text-primary font-bold">14.2MB</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted">BUFFER:</span>
+                <span className="text-primary font-bold">200 Ticks</span>
+              </div>
+            </div>
+          </PanelFrame>
+        </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
 

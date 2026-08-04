@@ -1,0 +1,255 @@
+/**
+ * styles/terminal_components.css
+ * ──────────────────────────────
+ * Styles for the Cyberpunk Terminal UI components.
+ */
+
+/* ── Panel Frame ──────────────────────────────────────────────────────────── */
+.panel-frame {
+  background: var(--bg-panel);
+  border: var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.panel-frame__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-2) var(--sp-4);
+  background: var(--bg-panel-header);
+  border-bottom: var(--border-subtle);
+  flex-shrink: 0;
+  height: 24px;
+}
+
+.panel-frame__title {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.panel-frame__title-accent {
+  color: var(--accent);
+}
+
+.panel-frame__body {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+  min-height: 0;
+}
+
+/* ── Ticker Bar ───────────────────────────────────────────────────────────── */
+.ticker-bar {
+  background: #020202;
+  border-bottom: 1px solid var(--border-color);
+  height: 32px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  position: relative;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+}
+
+.ticker-bar__status {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-4);
+  background: #080808;
+  border-right: 1px solid var(--border-color);
+  height: 100%;
+  z-index: 2;
+  flex-shrink: 0;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.ticker-bar__scroll-container {
+  display: flex;
+  overflow: hidden;
+  white-space: nowrap;
+  width: 100%;
+}
+
+.ticker-bar__track {
+  display: flex;
+  align-items: center;
+  animation: ticker-scroll 30s linear infinite;
+}
+
+.ticker-bar__track:hover {
+  animation-play-state: paused;
+}
+
+.ticker-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-4);
+  border-right: 1px dashed #1a1a1a;
+  cursor: pointer;
+}
+
+.ticker-item:hover {
+  background: var(--accent-bg);
+}
+
+.ticker-item--active {
+  background: rgba(255, 26, 26, 0.12);
+  border-bottom: 2px solid var(--accent);
+}
+
+.ticker-item__symbol {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.ticker-item__price {
+  color: var(--text-value);
+}
+
+/* ── Market Structure (Left Sidebar) ──────────────────────────────────────── */
+.market-structure {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  font-size: 0.7rem;
+}
+
+.market-stat-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.market-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--sp-1) 0;
+  border-bottom: 1px dotted #151515;
+}
+
+.market-stat-label {
+  color: var(--text-muted);
+  font-size: 0.65rem;
+}
+
+.market-stat-value {
+  font-weight: 500;
+}
+
+/* ── Confidence Heat (Right Sidebar) ──────────────────────────────────────── */
+.confidence-heat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+}
+
+.confidence-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-2);
+  background: #050505;
+  border: 1px solid #141414;
+}
+
+.confidence-item__header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+}
+
+.confidence-item__name {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.confidence-item__val {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ── Trade Log (Bottom Feed) ──────────────────────────────────────────────── */
+.trade-log {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.65rem;
+  font-family: var(--font-mono);
+}
+
+.trade-log__row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-1) var(--sp-3);
+  border-bottom: 1px solid #0c0c0c;
+}
+
+.trade-log__row:nth-child(even) {
+  background: #060606;
+}
+
+.trade-log__time {
+  color: var(--text-muted);
+}
+
+.trade-log__coin {
+  color: var(--text-secondary);
+  font-weight: 600;
+  width: 40px;
+}
+
+.trade-log__msg {
+  flex: 1;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.trade-log__msg--anomaly {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ── Positions Table ──────────────────────────────────────────────────────── */
+.positions-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.65rem;
+  text-align: left;
+}
+
+.positions-table th {
+  color: var(--text-muted);
+  font-weight: 600;
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--border-color);
+  text-transform: uppercase;
+  font-size: 0.6rem;
+}
+
+.positions-table td {
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid #101010;
+  color: var(--text-primary);
+}
+
+.positions-table tr:hover {
+  background: #0c0c0c;
+}

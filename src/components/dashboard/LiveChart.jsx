@@ -2,31 +2,6 @@
  * components/dashboard/LiveChart.jsx
  * ────────────────────────────────────
  * Real-time price chart using TradingView's lightweight-charts library.
- *
- * Performance architecture — WHY imperative canvas updates:
- *   React's VDOM re-renders the entire component subtree on state changes.
- *   At 1 tick/second × 8 coins, using React state for each tick would cause
- *   continuous frame-rate-impacting re-renders. Instead:
- *
- *   1. The chart is created ONCE via useRef (never recreated on re-render).
- *   2. Zustand's subscribe() API delivers ticks DIRECTLY to the canvas update
- *      function — completely bypassing React's render cycle.
- *   3. React state is only used for the "no data" loading state.
- *
- *   This achieves true 60fps chart updates regardless of React render frequency.
- *
- * Responsibilities:
- *   - Create and configure the lightweight-charts instance.
- *   - Subscribe to Zustand tick store for the active coin.
- *   - Render anomaly markers (red triangles) on the chart.
- *   - Handle coin switching (clear and reload history).
- *   - Resize the chart responsively via ResizeObserver.
- *
- * NOT responsible for:
- *   - WebSocket connection (see hooks/useWebSocket.js).
- *   - Fetching historical data (handled by Dashboard.jsx on coin change).
- *
- * @module components/dashboard/LiveChart
  */
 
 import React, { useEffect, useRef, useState } from "react";
@@ -35,20 +10,12 @@ import useTickStore from "../../store/tickStore";
 import { isoToUnixSec, formatPrice } from "../../utils/formatters";
 import Spinner from "../ui/Spinner";
 
-/**
- * LiveChart — Canvas-based real-time price chart with anomaly markers.
- *
- * @param {object} props
- * @param {string} props.coinId     - Active coin_id to display.
- * @param {string} [props.className] - Additional CSS classes for the container.
- * @returns {React.ReactElement}
- */
 function LiveChart({ coinId, className = "" }) {
   const containerRef = useRef(null);
   const chartRef = useRef(null);
   const seriesRef = useRef(null);
   const markersApiRef = useRef(null);
-  const markerDataRef = useRef([]);  // Accumulate markers; batch-set on anomaly
+  const markerDataRef = useRef([]);
   const unsubscribeRef = useRef(null);
   const [hasData, setHasData] = useState(false);
 
@@ -56,30 +23,30 @@ function LiveChart({ coinId, className = "" }) {
   useEffect(() => {
     if (!containerRef.current) return;
 
-    // Create the chart instance with dark terminal theme
+    // Create the chart instance with dark crimson terminal theme
     chartRef.current = createChart(containerRef.current, {
       layout: {
-        background: { color: "transparent" },
-        textColor: "hsl(220, 15%, 65%)",
-        fontFamily: "'Inter', sans-serif",
-        fontSize: 11,
+        background: { color: "#050505" },
+        textColor: "#808080",
+        fontFamily: "'JetBrains Mono', monospace",
+        fontSize: 10,
       },
       grid: {
-        vertLines: { color: "hsla(220, 20%, 50%, 0.08)", style: LineStyle.Dotted },
-        horzLines: { color: "hsla(220, 20%, 50%, 0.08)", style: LineStyle.Dotted },
+        vertLines: { color: "rgba(255, 26, 26, 0.04)", style: LineStyle.Dotted },
+        horzLines: { color: "rgba(255, 26, 26, 0.04)", style: LineStyle.Dotted },
       },
       crosshair: {
-        mode: 1, // Normal crosshair mode
-        vertLine: { color: "hsla(195, 100%, 60%, 0.6)", width: 1 },
-        horzLine: { color: "hsla(195, 100%, 60%, 0.6)", width: 1 },
+        mode: 1,
+        vertLine: { color: "rgba(255, 26, 26, 0.5)", width: 1 },
+        horzLine: { color: "rgba(255, 26, 26, 0.5)", width: 1 },
       },
       rightPriceScale: {
-        borderColor: "hsla(220, 20%, 50%, 0.15)",
-        textColor: "hsl(220, 15%, 55%)",
+        borderColor: "#1a1a1a",
+        textColor: "#666666",
       },
       timeScale: {
-        borderColor: "hsla(220, 20%, 50%, 0.15)",
-        textColor: "hsl(220, 15%, 55%)",
+        borderColor: "#1a1a1a",
+        textColor: "#666666",
         timeVisible: true,
         secondsVisible: true,
       },
@@ -89,16 +56,16 @@ function LiveChart({ coinId, className = "" }) {
       height: containerRef.current.clientHeight || 400,
     });
 
-    // Line series for live price data
+    // Crimson line series for live price data
     seriesRef.current = chartRef.current.addSeries(LineSeries, {
-      color: "hsl(195, 100%, 50%)",    // Electric cyan — matches accent color
+      color: "#ff1a1a",    // Crimson Red — matches terminal accent color
       lineWidth: 2,
       crosshairMarkerVisible: true,
       crosshairMarkerRadius: 4,
-      crosshairMarkerBorderColor: "hsl(195, 100%, 70%)",
-      crosshairMarkerBackgroundColor: "hsl(225, 20%, 8%)",
+      crosshairMarkerBorderColor: "#ff3333",
+      crosshairMarkerBackgroundColor: "#050505",
       priceLineVisible: true,
-      priceLineColor: "hsla(195, 100%, 50%, 0.4)",
+      priceLineColor: "rgba(255, 26, 26, 0.4)",
       priceLineWidth: 1,
       priceLineStyle: LineStyle.Dashed,
       lastValueVisible: true,
@@ -107,8 +74,6 @@ function LiveChart({ coinId, className = "" }) {
     // Create the markers plugin API instance for drawing anomalies
     markersApiRef.current = createSeriesMarkers(seriesRef.current, []);
 
-    // ResizeObserver keeps the chart width in sync with the container.
-    // Without this, the chart overflows or appears cut off on window resize.
     const resizeObserver = new ResizeObserver((entries) => {
       const { width, height } = entries[0].contentRect;
       if (chartRef.current) {
@@ -123,13 +88,12 @@ function LiveChart({ coinId, className = "" }) {
       chartRef.current = null;
       seriesRef.current = null;
     };
-  }, []); // Run ONCE — chart instance is never recreated
+  }, []);
 
   // ── Coin switching: reload history ────────────────────────────────────
   useEffect(() => {
     if (!seriesRef.current) return;
 
-    // Clear series data and markers when coin changes
     seriesRef.current.setData([]);
     if (markersApiRef.current) {
       markersApiRef.current.setMarkers([]);
@@ -137,16 +101,13 @@ function LiveChart({ coinId, className = "" }) {
     markerDataRef.current = [];
     setHasData(false);
 
-    // Unsubscribe from previous coin's store subscription
     if (unsubscribeRef.current) {
       unsubscribeRef.current();
       unsubscribeRef.current = null;
     }
 
-    // Load existing history for the new coin from the store
     const history = useTickStore.getState().tickHistory[coinId] || [];
     if (history.length > 0) {
-      // De-duplicate points sharing the same second (lightweight-charts strictly forbids duplicate timestamps)
       const uniquePoints = new Map();
       history.forEach((t) => {
         const timeSec = isoToUnixSec(t.polled_at);
@@ -159,7 +120,6 @@ function LiveChart({ coinId, className = "" }) {
 
       seriesRef.current.setData(points);
 
-      // De-duplicate and rebuild anomaly markers from history
       const uniqueMarkers = new Map();
       history
         .filter((t) => t.is_anomaly)
@@ -168,7 +128,7 @@ function LiveChart({ coinId, className = "" }) {
           uniqueMarkers.set(timeSec, {
             time: timeSec,
             position: "aboveBar",
-            color: "hsl(350, 100%, 60%)",  // Anomaly red
+            color: "#ff1a1a",
             shape: "arrowDown",
             text: `⚠ ${t.anomaly_score.toFixed(3)}`,
             size: 1,
@@ -183,9 +143,6 @@ function LiveChart({ coinId, className = "" }) {
       setHasData(true);
     }
 
-    // Subscribe to new ticks for this coin via Zustand subscribe() — NOT the hook.
-    // subscribe() delivers state changes directly to this callback WITHOUT causing
-    // a React re-render. This is the key performance pattern for the chart.
     unsubscribeRef.current = useTickStore.subscribe(
       (state) => state.latestByCoins[coinId],
       (latestTick) => {
@@ -196,23 +153,19 @@ function LiveChart({ coinId, className = "" }) {
           value: latestTick.price_usd,
         };
 
-        // update() is the lightweight-charts incremental update API:
-        // it redraws only the affected canvas area, not the full chart.
         seriesRef.current.update(point);
         setHasData(true);
 
-        // Add anomaly marker if flagged
         if (latestTick.is_anomaly) {
           const marker = {
             time: point.time,
             position: "aboveBar",
-            color: "hsl(350, 100%, 60%)",
+            color: "#ff1a1a",
             shape: "arrowDown",
             text: `⚠ ${latestTick.anomaly_score.toFixed(3)}`,
             size: 1,
           };
           
-          // De-duplicate markers list by timestamp to avoid duplicates on update
           const markersMap = new Map();
           markerDataRef.current.forEach(m => markersMap.set(m.time, m));
           markersMap.set(marker.time, marker);
@@ -232,20 +185,18 @@ function LiveChart({ coinId, className = "" }) {
         unsubscribeRef.current = null;
       }
     };
-  }, [coinId]); // Re-run whenever the active coin changes
+  }, [coinId]);
 
   return (
     <div className={`live-chart ${className}`} id={`chart-panel-${coinId}`}>
-      {/* Loading overlay shown while waiting for first tick */}
       {!hasData && (
         <div className="live-chart__loading">
-          <Spinner size="40px" label="Waiting for live data..." />
-          <p className="text-sm text-muted" style={{ marginTop: "12px" }}>
-            Waiting for first tick…
+          <Spinner size="30px" label="Waiting for live telemetry stream..." />
+          <p className="text-xs text-muted" style={{ marginTop: "8px", fontFamily: "var(--font-mono)" }}>
+            AWAITING FIRST TICK STREAM...
           </p>
         </div>
       )}
-      {/* Canvas container — lightweight-charts mounts here */}
       <div ref={containerRef} className="live-chart__canvas" />
     </div>
   );
