@@ -13,12 +13,11 @@ const COIN_SYMBOLS = {
 };
 
 export default function TickerBar({ coins = [], activeCoin, onSelectCoin }) {
-  const tickHistory = useTickStore((state) => state.tickHistory);
+  const latestByCoins = useTickStore((state) => state.latestByCoins);
 
   // Get current snapshot details per coin
   const items = coins.map((coinId) => {
-    const history = tickHistory[coinId] || [];
-    const latest = history[history.length - 1];
+    const latest = latestByCoins[coinId];
     const price = latest ? latest.price_usd : 0;
     const change = latest ? latest.price_change_24h || 0 : 0;
     const symbol = COIN_SYMBOLS[coinId] || coinId.slice(0, 4).toUpperCase();

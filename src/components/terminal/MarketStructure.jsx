@@ -2,10 +2,19 @@ import React from "react";
 import PanelFrame from "../layout/PanelFrame";
 import useTickStore from "../../store/tickStore";
 
+// Stable empty array selector fallback to ensure getSnapshot returns cached reference
+const EMPTY_ARRAY = [];
+
 export default function MarketStructure({ activeCoin, stats }) {
-  const history = useTickStore((state) => state.tickHistory[activeCoin] || []);
-  const latest = history[history.length - 1];
-  const anomalyCount = useTickStore((state) => state.anomalyCounts[activeCoin] || 0);
+  const history = useTickStore(
+    (state) => state.tickHistory[activeCoin] || EMPTY_ARRAY
+  );
+  const latest = useTickStore(
+    (state) => state.latestByCoins[activeCoin]
+  );
+  const anomalyCount = useTickStore(
+    (state) => state.anomalyCounts[activeCoin] || 0
+  );
 
   const score = latest ? (latest.anomaly_score || 0).toFixed(4) : "0.0000";
   const vol24h = latest?.volume_24h ? `$${(latest.volume_24h / 1e6).toFixed(2)}M` : "---";

@@ -3,9 +3,7 @@ import PanelFrame from "../layout/PanelFrame";
 import useTickStore from "../../store/tickStore";
 
 export default function OpenPositions({ activeCoin }) {
-  const history = useTickStore((state) => state.tickHistory[activeCoin] || []);
-  const latest = history[history.length - 1];
-
+  const latest = useTickStore((state) => state.latestByCoins[activeCoin]);
   const currentPrice = latest ? latest.price_usd : 0;
 
   // Mock active positions matching trading terminal reference interface

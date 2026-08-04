@@ -3,8 +3,7 @@ import PanelFrame from "../layout/PanelFrame";
 import useTickStore from "../../store/tickStore";
 
 export default function ConfidenceHeat({ activeCoin }) {
-  const history = useTickStore((state) => state.tickHistory[activeCoin] || []);
-  const latest = history[history.length - 1];
+  const latest = useTickStore((state) => state.latestByCoins[activeCoin]);
 
   const score = latest ? latest.anomaly_score || 0 : 0;
   const isAnomaly = latest?.is_anomaly || false;
