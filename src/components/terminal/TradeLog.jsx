@@ -2,8 +2,10 @@ import React from "react";
 import PanelFrame from "../layout/PanelFrame";
 import useTickStore from "../../store/tickStore";
 
+const EMPTY = [];
+
 export default function TradeLog({ activeCoin }) {
-  const history = useTickStore((state) => state.tickHistory[activeCoin] || []);
+  const history = useTickStore((state) => state.tickHistory[activeCoin] ?? EMPTY);
 
   // Format tick items for the terminal stream log
   const logEntries = history.slice(-15).reverse().map((tick, idx) => {
