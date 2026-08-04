@@ -82,13 +82,16 @@ class Settings(BaseSettings):
         description="Active anomaly scoring model. 'zscore' for rolling z-score; 'halftrees' for HalfSpaceTrees online learning.",
     )
 
-    # Default threshold for HalfSpaceTrees (anomaly_score ∈ [0, 1]).
-    # Chosen by inspecting percentile distribution of scores over 24h live data.
+    # Quantile level for HalfSpaceTrees: flag scores above the running
+    # q-quantile, so the effective anomaly rate is roughly (1 - q).
+    # HST's absolute score scale is feature-space dependent and clusters near
+    # 1.0 in our stationary feature space, which makes a fixed cutoff useless
+    # (0.75 flagged ~89% of ticks). See scoring/halftrees.py.
     default_threshold_halftrees: float = Field(
-        default=0.75,
-        ge=0.0,
-        le=1.0,
-        description="Anomaly score threshold for HalfSpaceTrees. Score > threshold → anomaly.",
+        default=0.99,
+        gt=0.5,
+        lt=1.0,
+        description="Quantile level q for HalfSpaceTrees. Score > running q-quantile → anomaly.",
     )
 
     # Default threshold for rolling z-score (units: standard deviations).

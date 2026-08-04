@@ -95,29 +95,29 @@ class TestHalfSpaceTreesScorer:
 
     def test_score_returns_tuple_of_float_and_bool(self) -> None:
         """score() must return (float, bool) for any input."""
-        scorer = HalfSpaceTreesScorer(threshold=0.75)
+        scorer = HalfSpaceTreesScorer(threshold=0.95)
         score, is_anomaly = scorer.score(mk_features(1000.0))
         assert isinstance(score, float)
         assert isinstance(is_anomaly, bool)
 
     def test_anomaly_score_in_unit_interval(self) -> None:
         """HalfSpaceTrees anomaly_score must always be in [0, 1]."""
-        scorer = HalfSpaceTreesScorer(threshold=0.75)
+        scorer = HalfSpaceTreesScorer(threshold=0.95)
         for price in [100.0, 200.0, 50000.0, 0.001]:
             score, _ = scorer.score(mk_features(price))
             assert 0.0 <= score <= 1.0, f"Score {score} out of [0, 1] for price {price}"
 
     def test_threshold_update_does_not_reset_model(self) -> None:
         """update_threshold() must change the threshold without resetting model state."""
-        scorer = HalfSpaceTreesScorer(threshold=0.75)
+        scorer = HalfSpaceTreesScorer(threshold=0.95)
         initial_n_seen = scorer._n_seen
         for _ in range(10):
             scorer.score(mk_features(1000.0))
         n_before = scorer._n_seen
-        scorer.update_threshold(0.5)
+        scorer.update_threshold(0.90)
         # _n_seen must be unchanged — model was not reset
         assert scorer._n_seen == n_before
-        assert scorer.threshold == 0.5
+        assert scorer.threshold == 0.90
 
     def test_warm_up_tracking(self) -> None:
         """is_warmed_up must be False before WINDOW_SIZE ticks."""

@@ -40,11 +40,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import httpx
 
-try:
-    from app.scoring.features import FeatureExtractor
-except ImportError:
-    FeatureExtractor = None
-
+from app.scoring.features import FeatureExtractor
 from app.scoring.halftrees import HalfSpaceTreesScorer
 from app.scoring.zscore import ZScoreScorer
 
@@ -228,11 +224,11 @@ def run_backtest(
     else:
         raise ValueError(f"Unknown model: {model_name}")
         
-    extractor = FeatureExtractor(window_size=30) if FeatureExtractor else None
-    
+    extractor = FeatureExtractor(window_size=30)
+
     scores = []
     anomaly_indices = []
-    
+
     all_rets = []
     all_vols = []
     all_z_rets = []
@@ -241,31 +237,30 @@ def run_backtest(
     for i, kline in enumerate(klines):
         price = kline["close"]
         volume = kline["volume"]
-        
-        features = None
-        if extractor:
-            features = extractor.extract(price, volume)
-            if features:
-                all_rets.append(features.get("ret", 0.0))
-                all_vols.append(features.get("vol", 0.0))
-                all_z_rets.append(features.get("z_ret", 0.0))
-                all_vol_deltas.append(features.get("vol_delta", 0.0))
-                
-        # Skip scoring if we haven't warmed up features yet (assuming updated scorers)
-        if features is None and extractor is not None:
+
+        features = extractor.extract(price, volume)
+
+        # Skip the feature warm-up period: no valid features means nothing to score.
+        if features is None:
             continue
-            
-        try:
-            # New signature: score(features)
-            score = scorer.score(features)
-        except TypeError:
-            # Fallback for old signature: score(price)
-            score = scorer.score(price)
-            
-        scores.append(score.score)
-        if score.is_anomaly:
-            anomaly_indices.append(i)
-            
+
+        all_rets.append(features["ret"])
+        all_vols.append(features["vol"])
+        all_z_rets.append(features["z_ret"])
+        all_vol_deltas.append(features["vol_delta"])
+
+
+        # BaseScorer.score() returns a plain (anomaly_score, is_anomaly) tuple.
+        anomaly_score, is_anomaly = scorer.score(features)
+
+        scores.append(anomaly_score)
+        if is_anomaly:
+            # Index into the scored series (NOT the raw kline index i): all_rets,
+            # scores and anomaly_indices must share one coordinate system, since
+            # compute_lag() and the model-agreement comparison index into them.
+            anomaly_indices.append(len(scores) - 1)
+
+
     anomaly_rate = len(anomaly_indices) / max(1, len(scores))
     lag = compute_lag(anomaly_indices, all_rets) if all_rets else 0.0
     

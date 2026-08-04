@@ -117,7 +117,7 @@ class ZScoreScorer(BaseScorer):
         suppressed regardless of z-score — stats are not yet representative.
 
         Args:
-            features: Current features dict (must contain 'z_ret').
+            features: Current features dict (must contain 'ret').
 
         Returns:
             Tuple of (z_score: float, is_anomaly: bool).
@@ -126,11 +126,11 @@ class ZScoreScorer(BaseScorer):
         current_mean = self._rolling_mean()
         current_std = self._rolling_std()
         
-        z_ret = features["z_ret"]
-        z_score = abs(z_ret - current_mean) / current_std
+        value = features["ret"]
+        z_score = abs(value - current_mean) / current_std
 
-        # Update window with current z_ret
-        self._window.append(z_ret)
+        # Update window with current value
+        self._window.append(value)
         self._n_seen += 1
 
         # Suppress anomaly flags during warm-up: insufficient data for reliable stats

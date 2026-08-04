@@ -45,9 +45,13 @@ class ConfigUpdateRequest(BaseModel):
 
     threshold: Optional[float] = Field(
         default=None,
-        ge=0.01,
+        gt=0.0,
         le=10.0,
-        description="New anomaly threshold. Semantics: ∈[0,1] for HST, σ units for z-score.",
+        description=(
+            "New anomaly threshold. Semantics differ by model: quantile level "
+            "q ∈ (0.5, 1) for halftrees, σ units for zscore. Validated against "
+            "the target model's own range in the handler."
+        ),
     )
     model_type: Optional[Literal["zscore", "halftrees"]] = Field(
         default=None,
