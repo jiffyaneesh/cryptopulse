@@ -96,38 +96,52 @@ const useTickStore = create(subscribeWithSelector((set, get) => ({
    * Trims tickHistory to MAX_HISTORY_PER_COIN to prevent memory growth.
    * Increments anomalyCounts if tick.is_anomaly is true.
    *
+   * Performance note — targeted key update vs full spread:
+   *   The naive pattern `{ ...state.tickHistory, [coin_id]: updated }` creates
+   *   a new object with new references for EVERY coin on EVERY tick, even coins
+   *   whose data did not change. With 8 coins at 6 ticks/min that is 48
+   *   unnecessary object allocations per minute. Instead we update only the
+   *   three keys that changed (tickHistory[coin_id], latestByCoins[coin_id],
+   *   anomalyCounts[coin_id]) while reusing the parent map references for all
+   *   other coins. Zustand's subscribeWithSelector() then only notifies
+   *   selectors whose returned slice actually changed.
+   *
    * @param {ScoredTick} tick - The scored tick received from the WebSocket.
    */
   addTick: (tick) =>
     set((state) => {
       const { coin_id } = tick;
 
-      // Get existing history for this coin, default to empty array
+      // Existing history for this coin — default to empty array
       const existing = state.tickHistory[coin_id] || [];
 
-      // Append new tick and trim to cap: slice from the end to keep newest entries
+      // Append and trim: drop the oldest entry when at cap to stay O(1)
       const updated =
         existing.length >= MAX_HISTORY_PER_COIN
-          ? [...existing.slice(1), tick] // Drop oldest, append newest
+          ? [...existing.slice(1), tick]
           : [...existing, tick];
 
-      // Increment anomaly count only if this tick is flagged
+      // Increment anomaly count only when this tick is flagged
       const prevCount = state.anomalyCounts[coin_id] || 0;
       const newCount = tick.is_anomaly ? prevCount + 1 : prevCount;
 
+      // Build new state objects only for the coin that changed.
+      // All other coin entries keep the same reference — Zustand's shallow
+      // equality check will skip re-renders for selectors that don't touch
+      // this coin.
+      const nextTickHistory = { ...state.tickHistory };
+      nextTickHistory[coin_id] = updated;
+
+      const nextLatestByCoins = { ...state.latestByCoins };
+      nextLatestByCoins[coin_id] = tick;
+
+      const nextAnomalyCounts = { ...state.anomalyCounts };
+      nextAnomalyCounts[coin_id] = newCount;
+
       return {
-        tickHistory: {
-          ...state.tickHistory,
-          [coin_id]: updated,
-        },
-        latestByCoins: {
-          ...state.latestByCoins,
-          [coin_id]: tick,
-        },
-        anomalyCounts: {
-          ...state.anomalyCounts,
-          [coin_id]: newCount,
-        },
+        tickHistory: nextTickHistory,
+        latestByCoins: nextLatestByCoins,
+        anomalyCounts: nextAnomalyCounts,
       };
     }),
 

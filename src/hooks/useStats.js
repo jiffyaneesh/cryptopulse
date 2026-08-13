@@ -26,8 +26,15 @@ const STATS_URL = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/api/stats`
   : "http://localhost:8000/api/stats";
 
-/** How often to refresh stats from the backend (milliseconds). */
-const POLL_INTERVAL_MS = 5000;
+/** How often to refresh stats from the backend (milliseconds).
+ *
+ * Stats data (anomaly counts, throughput, uptime) changes slowly — every
+ * 10 seconds at the fastest, since it aggregates DB rows from the poller.
+ * Polling every 5s generated 2× unnecessary HTTP requests per stats poll
+ * cycle with no visible benefit to the user. 15s matches the backend's
+ * effective update granularity without noticeable staleness on the dashboard.
+ */
+const POLL_INTERVAL_MS = 15_000;
 
 /**
  * @typedef {Object} StatsData
