@@ -76,7 +76,21 @@ async def get_history(
     offset: int = 0,
 ) -> list[dict]:
     """
-    Retrieve paginated tick history for a specific coin.
+    Retrieve paginated tick history for a specific coin, oldest-first.
+
+    Results are ordered oldest-first (ASC) so the frontend can feed them
+    directly into lightweight-charts' setData() without reversing. The
+    previous DESC ordering forced the frontend to call .reverse() on every
+    coin switch — an O(n) allocation that is now eliminated.
+
+    Args:
+        conn:    Active database connection adapter.
+        coin_id: CoinGecko coin identifier (e.g., "bitcoin").
+        limit:   Maximum rows to return (1–1000).
+        offset:  Rows to skip for pagination.
+
+    Returns:
+        List of tick dicts, oldest entry at index 0.
     """
     rows = await conn.fetchall(
         """
@@ -85,7 +99,7 @@ async def get_history(
                threshold, polled_at, scored_at
         FROM ticks
         WHERE coin_id = ?
-        ORDER BY polled_at DESC
+        ORDER BY polled_at ASC
         LIMIT ? OFFSET ?
         """,
         coin_id,

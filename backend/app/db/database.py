@@ -59,10 +59,22 @@ CREATE TABLE IF NOT EXISTS ticks (
 );
 """
 
-# Composite index on (coin_id, polled_at) supports common query patterns
+# Composite index on (coin_id, polled_at) supports the most common query pattern:
+# get_history WHERE coin_id = ? ORDER BY polled_at ASC/DESC LIMIT ?
 CREATE_INDEX_SQL = """
 CREATE INDEX IF NOT EXISTS idx_ticks_coin_polled
 ON ticks (coin_id, polled_at DESC);
+"""
+
+# Partial-style composite index to accelerate anomaly-count queries.
+# get_anomaly_count_today and get_anomaly_counts_by_coin both filter on
+# is_anomaly = 1 AND polled_at >= ?. Without this index, SQLite scans the
+# full coin_id/polled_at index and then applies the is_anomaly filter.
+# With (is_anomaly, polled_at) the anomaly-only rows are clustered together
+# so the count queries touch far fewer pages.
+CREATE_ANOMALY_INDEX_SQL = """
+CREATE INDEX IF NOT EXISTS idx_ticks_anomaly_polled
+ON ticks (is_anomaly, polled_at DESC);
 """
 
 
@@ -190,6 +202,7 @@ class DatabaseManager:
         table_sql = CREATE_TICKS_TABLE_SQL_POSTGRES if self._is_postgres else CREATE_TICKS_TABLE_SQL_SQLITE
         await self._adapter.execute(table_sql)
         await self._adapter.execute(CREATE_INDEX_SQL)
+        await self._adapter.execute(CREATE_ANOMALY_INDEX_SQL)
         await self._adapter.commit()
         logger.debug("Schema verified/created")
 

@@ -137,15 +137,17 @@ const useTickStore = create(subscribeWithSelector((set, get) => ({
    * Called when the user switches coins — pre-populates the chart with
    * historical data before the next live WS tick arrives.
    *
+   * The API now returns ticks oldest-first (ORDER BY polled_at ASC), so no
+   * reversal is needed here. We just cap at MAX_HISTORY_PER_COIN.
+   *
    * @param {string}      coin_id - Coin to load history for.
-   * @param {ScoredTick[]} ticks  - Array of historical ticks (newest-first from API).
+   * @param {ScoredTick[]} ticks  - Array of historical ticks (oldest-first from API).
    */
   loadHistory: (coin_id, ticks) =>
     set((state) => ({
-      // API returns newest-first; reverse to oldest-first for chart rendering
       tickHistory: {
         ...state.tickHistory,
-        [coin_id]: [...ticks].reverse().slice(0, MAX_HISTORY_PER_COIN),
+        [coin_id]: ticks.slice(-MAX_HISTORY_PER_COIN),
       },
     })),
 
