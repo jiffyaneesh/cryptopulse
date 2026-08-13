@@ -187,6 +187,14 @@ class CoinGeckoPoller:
                     price_usd=float(coin_data.get("lastPrice", 0.0)),
                     volume_24h=float(coin_data.get("quoteVolume", 0.0)),
                     price_change_24h=float(coin_data.get("priceChangePercent", 0.0)),
+                    # 24-hour high/low and best bid/ask are included in the
+                    # Binance /api/v3/ticker/24hr response at no extra cost.
+                    # Default to 0.0 when absent (e.g., newly-listed symbols
+                    # may not yet have a full 24h window).
+                    high_price=float(coin_data.get("highPrice", 0.0)),
+                    low_price=float(coin_data.get("lowPrice", 0.0)),
+                    bid_price=float(coin_data.get("bidPrice", 0.0)),
+                    ask_price=float(coin_data.get("askPrice", 0.0)),
                     polled_at=datetime.now(timezone.utc),
                 )
             )

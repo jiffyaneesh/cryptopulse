@@ -55,6 +55,12 @@ class TickRecord(BaseModel):
     price_usd: float
     volume_24h: float
     price_change_24h: float
+    # 24h high/low and best bid/ask — available from Binance /api/v3/ticker/24hr
+    # Older DB rows (before migration) will have 0.0 for these fields.
+    high_price: float = 0.0
+    low_price: float = 0.0
+    bid_price: float = 0.0
+    ask_price: float = 0.0
     anomaly_score: float
     is_anomaly: bool
     model_type: str

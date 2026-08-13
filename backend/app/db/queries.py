@@ -50,9 +50,10 @@ async def insert_tick_no_commit(conn: DatabaseConnectionAdapter, scored_tick: Sc
         """
         INSERT INTO ticks (
             coin_id, symbol, name, price_usd, volume_24h,
-            price_change_24h, anomaly_score, is_anomaly, model_type,
+            price_change_24h, high_price, low_price, bid_price, ask_price,
+            anomaly_score, is_anomaly, model_type,
             threshold, polled_at, scored_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         tick.coin_id,
         tick.symbol,
@@ -60,6 +61,10 @@ async def insert_tick_no_commit(conn: DatabaseConnectionAdapter, scored_tick: Sc
         tick.price_usd,
         tick.volume_24h,
         tick.price_change_24h,
+        tick.high_price,
+        tick.low_price,
+        tick.bid_price,
+        tick.ask_price,
         scored_tick.anomaly_score,
         1 if scored_tick.is_anomaly else 0,
         scored_tick.model_type,
@@ -95,7 +100,8 @@ async def get_history(
     rows = await conn.fetchall(
         """
         SELECT coin_id, symbol, name, price_usd, volume_24h,
-               price_change_24h, anomaly_score, is_anomaly, model_type,
+               price_change_24h, high_price, low_price, bid_price, ask_price,
+               anomaly_score, is_anomaly, model_type,
                threshold, polled_at, scored_at
         FROM ticks
         WHERE coin_id = ?

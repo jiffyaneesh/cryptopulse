@@ -31,6 +31,10 @@ CREATE TABLE IF NOT EXISTS ticks (
     price_usd     REAL    NOT NULL,
     volume_24h    REAL    NOT NULL DEFAULT 0,
     price_change_24h REAL NOT NULL DEFAULT 0,
+    high_price    REAL    NOT NULL DEFAULT 0,
+    low_price     REAL    NOT NULL DEFAULT 0,
+    bid_price     REAL    NOT NULL DEFAULT 0,
+    ask_price     REAL    NOT NULL DEFAULT 0,
     anomaly_score REAL    NOT NULL,
     is_anomaly    INTEGER NOT NULL DEFAULT 0,
     model_type    TEXT    NOT NULL,
@@ -50,6 +54,10 @@ CREATE TABLE IF NOT EXISTS ticks (
     price_usd     DOUBLE PRECISION NOT NULL,
     volume_24h    DOUBLE PRECISION NOT NULL DEFAULT 0,
     price_change_24h DOUBLE PRECISION NOT NULL DEFAULT 0,
+    high_price    DOUBLE PRECISION NOT NULL DEFAULT 0,
+    low_price     DOUBLE PRECISION NOT NULL DEFAULT 0,
+    bid_price     DOUBLE PRECISION NOT NULL DEFAULT 0,
+    ask_price     DOUBLE PRECISION NOT NULL DEFAULT 0,
     anomaly_score DOUBLE PRECISION NOT NULL,
     is_anomaly    INTEGER NOT NULL DEFAULT 0,
     model_type    TEXT    NOT NULL,
@@ -76,6 +84,25 @@ CREATE_ANOMALY_INDEX_SQL = """
 CREATE INDEX IF NOT EXISTS idx_ticks_anomaly_polled
 ON ticks (is_anomaly, polled_at DESC);
 """
+
+# ── Live migration: add new columns to existing databases ────────────────────
+# SQLite's ALTER TABLE ADD COLUMN is safe to run on an already-migrated DB
+# (it's idempotent when the column already exists only in SQLite ≥ 3.37.0
+# which supports IF NOT EXISTS on ALTER TABLE). For older SQLite we catch
+# the OperationalError that fires when the column already exists.
+MIGRATE_ADD_PRICE_COLUMNS_SQLITE: list[str] = [
+    "ALTER TABLE ticks ADD COLUMN high_price REAL NOT NULL DEFAULT 0",
+    "ALTER TABLE ticks ADD COLUMN low_price  REAL NOT NULL DEFAULT 0",
+    "ALTER TABLE ticks ADD COLUMN bid_price  REAL NOT NULL DEFAULT 0",
+    "ALTER TABLE ticks ADD COLUMN ask_price  REAL NOT NULL DEFAULT 0",
+]
+
+MIGRATE_ADD_PRICE_COLUMNS_POSTGRES: list[str] = [
+    "ALTER TABLE ticks ADD COLUMN IF NOT EXISTS high_price DOUBLE PRECISION NOT NULL DEFAULT 0",
+    "ALTER TABLE ticks ADD COLUMN IF NOT EXISTS low_price  DOUBLE PRECISION NOT NULL DEFAULT 0",
+    "ALTER TABLE ticks ADD COLUMN IF NOT EXISTS bid_price  DOUBLE PRECISION NOT NULL DEFAULT 0",
+    "ALTER TABLE ticks ADD COLUMN IF NOT EXISTS ask_price  DOUBLE PRECISION NOT NULL DEFAULT 0",
+]
 
 
 class DatabaseConnectionAdapter:
@@ -195,7 +222,7 @@ class DatabaseManager:
         self._adapter = None
 
     async def _create_schema(self) -> None:
-        """Verify and create schemas."""
+        """Verify and create schemas, then apply any pending migrations."""
         if self._adapter is None:
             raise RuntimeError("Database not connected")
 
@@ -203,6 +230,29 @@ class DatabaseManager:
         await self._adapter.execute(table_sql)
         await self._adapter.execute(CREATE_INDEX_SQL)
         await self._adapter.execute(CREATE_ANOMALY_INDEX_SQL)
+
+        # ── Live migration: add high/low/bid/ask columns ──────────────────────
+        # For databases that existed before these columns were added.
+        # PostgreSQL uses IF NOT EXISTS natively; SQLite doesn't, so we catch
+        # OperationalError("duplicate column name") and ignore it — that means
+        # the column is already there from a previous run.
+        migrate_stmts = (
+            MIGRATE_ADD_PRICE_COLUMNS_POSTGRES
+            if self._is_postgres
+            else MIGRATE_ADD_PRICE_COLUMNS_SQLITE
+        )
+        for stmt in migrate_stmts:
+            try:
+                await self._adapter.execute(stmt)
+            except Exception as exc:
+                # "duplicate column name" is the expected error on SQLite when the
+                # column already exists. Log at DEBUG so it doesn't alarm operators
+                # on every restart.
+                if "duplicate column" in str(exc).lower():
+                    logger.debug("Migration column already exists (skipping): %s", stmt.strip())
+                else:
+                    raise
+
         await self._adapter.commit()
         logger.debug("Schema verified/created")
 

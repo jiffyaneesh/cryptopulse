@@ -37,9 +37,13 @@ class PriceTick:
         coin_id:          CoinGecko identifier (e.g. "bitcoin").
         symbol:           Ticker symbol (e.g. "BTC"). Uppercased on init.
         name:             Human-readable name (e.g. "Bitcoin").
-        price_usd:        Current price in USD.
+        price_usd:        Current price in USD (last traded price).
         volume_24h:       24-hour quote volume in USD.
         price_change_24h: 24-hour price change percentage.
+        high_price:       24-hour high price in USD (Binance highPrice).
+        low_price:        24-hour low price in USD (Binance lowPrice).
+        bid_price:        Best bid price in USD (Binance bidPrice).
+        ask_price:        Best ask price in USD (Binance askPrice).
         polled_at:        UTC datetime when this tick was fetched.
 
     Note: market_cap is deliberately absent. The Binance ticker endpoint does
@@ -54,6 +58,10 @@ class PriceTick:
     price_usd: float
     volume_24h: float
     price_change_24h: float
+    high_price: float = 0.0
+    low_price: float = 0.0
+    bid_price: float = 0.0
+    ask_price: float = 0.0
     polled_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     def __post_init__(self) -> None:
@@ -78,6 +86,10 @@ class PriceTick:
             "price_usd": self.price_usd,
             "volume_24h": self.volume_24h,
             "price_change_24h": self.price_change_24h,
+            "high_price": self.high_price,
+            "low_price": self.low_price,
+            "bid_price": self.bid_price,
+            "ask_price": self.ask_price,
             "polled_at": self.polled_at.isoformat(),
         }
 
@@ -132,6 +144,10 @@ class ScoredTick:
             "price_usd": self.tick.price_usd,
             "volume_24h": self.tick.volume_24h,
             "price_change_24h": self.tick.price_change_24h,
+            "high_price": self.tick.high_price,
+            "low_price": self.tick.low_price,
+            "bid_price": self.tick.bid_price,
+            "ask_price": self.tick.ask_price,
             "polled_at": self.tick.polled_at.isoformat(),
             # Scoring metadata
             "anomaly_score": round(self.anomaly_score, 6),
