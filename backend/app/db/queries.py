@@ -23,7 +23,27 @@ logger = logging.getLogger(__name__)
 
 async def insert_tick(conn: DatabaseConnectionAdapter, scored_tick: ScoredTick) -> None:
     """
-    Persist a ScoredTick to the ticks table.
+    Persist a ScoredTick to the ticks table and immediately commit.
+
+    Prefer insert_tick_no_commit + a batched commit in broadcast_loop
+    for high-throughput paths. This function is kept for one-off inserts
+    (e.g., tests, scripts) where an explicit immediate commit is needed.
+    """
+    await insert_tick_no_commit(conn, scored_tick)
+    await conn.commit()
+
+
+async def insert_tick_no_commit(conn: DatabaseConnectionAdapter, scored_tick: ScoredTick) -> None:
+    """
+    Insert a ScoredTick row WITHOUT committing the transaction.
+
+    Use this inside broadcast_loop's batched-commit flow to avoid one
+    fsync per tick. The caller is responsible for calling conn.commit()
+    when the batch is ready to flush.
+
+    Args:
+        conn:        Active database connection adapter.
+        scored_tick: The scored tick to persist.
     """
     tick = scored_tick.tick
     await conn.execute(
@@ -47,7 +67,6 @@ async def insert_tick(conn: DatabaseConnectionAdapter, scored_tick: ScoredTick) 
         tick.polled_at.isoformat(),
         scored_tick.scored_at.isoformat(),
     )
-    await conn.commit()
 
 
 async def get_history(

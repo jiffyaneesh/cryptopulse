@@ -17,6 +17,7 @@ NOT responsible for:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime, timezone
 
@@ -75,11 +76,17 @@ async def get_stats(
     start_of_day = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
     start_of_day_str = start_of_day.isoformat()
 
-    # Fetch DB-derived stats concurrently
-    total_today = await queries.get_total_count_today(db, start_of_day_str)
-    anomalies_today = await queries.get_anomaly_count_today(db, start_of_day_str)
-    throughput = await queries.get_throughput_per_minute(db, last_n_minutes=5)
-    anomalies_by_coin = await queries.get_anomaly_counts_by_coin(db, start_of_day_str)
+    # Run all four DB-derived stat queries concurrently.
+    # Each query is an independent SELECT — there is no ordering dependency
+    # between them. asyncio.gather() fires all four coroutines in the same
+    # event-loop tick and awaits them together, cutting round-trip latency
+    # from ~4× one query to ~1× the slowest query.
+    total_today, anomalies_today, throughput, anomalies_by_coin = await asyncio.gather(
+        queries.get_total_count_today(db, start_of_day_str),
+        queries.get_anomaly_count_today(db, start_of_day_str),
+        queries.get_throughput_per_minute(db, last_n_minutes=5),
+        queries.get_anomaly_counts_by_coin(db, start_of_day_str),
+    )
 
     # Pull in-memory state from app.state (set during lifespan startup)
     scoring_worker = request.app.state.scoring_worker

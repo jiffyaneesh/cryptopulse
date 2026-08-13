@@ -129,37 +129,100 @@ manager = ConnectionManager()
 
 async def broadcast_loop(scored_queue: asyncio.Queue, db_conn) -> None:
     """
-    Continuously consume ScoredTicks from the queue and broadcast them.
+    Continuously consume ScoredTicks from the queue, persist them to the DB
+    in batches, and broadcast each one to connected WebSocket clients.
 
     This coroutine runs as a background task started at application startup.
-    For each ScoredTick:
-      1. Persist it to SQLite (for history/stats endpoints).
-      2. Broadcast to all connected WebSocket clients.
+
+    Batching strategy
+    ─────────────────
+    SQLite's WAL mode amortises fsync cost across transactions, but each
+    individual commit still acquires the write lock and flushes WAL pages.
+    At 8 coins × 6 polls/min = ~48 inserts/min we previously committed 48
+    times/min. With batching we commit at most every COMMIT_INTERVAL_SECONDS
+    seconds OR when COMMIT_BATCH_SIZE inserts accumulate — whichever comes
+    first. This collapses the 48 commits/min to roughly 1 commit/5s.
+
+    Broadcasting is NOT batched — each tick is sent to clients immediately
+    so the dashboard stays real-time. Only the DB write is deferred.
 
     Args:
-        scored_queue: asyncio.Queue containing ScoredTick objects from the scorer.
-        db_conn:      Active aiosqlite database connection for persistence.
+        scored_queue: asyncio.Queue containing ScoredTick objects.
+        db_conn:      Active database connection adapter for persistence.
     """
     logger.info("Broadcast loop started")
 
+    # ── Batch-commit configuration ────────────────────────────────────────────
+    # Commit when either condition is met first: N inserts buffered, or T seconds elapsed.
+    COMMIT_BATCH_SIZE: int = 20
+    COMMIT_INTERVAL_SECONDS: float = 5.0
+
+    pending_count: int = 0
+    last_commit_time: float = asyncio.get_event_loop().time()
+
     while True:
-        # Plain get() — the ScoringWorker forwards SHUTDOWN_SENTINEL downstream
-        # on shutdown, which is what breaks this loop. Polling with a timeout
-        # would risk losing a tick to the cancelled get() on timeout.
-        item = await scored_queue.get()
+        # Use wait_for with a timeout so we commit on time even when the queue
+        # is quiet (e.g., all coins polled, but <COMMIT_BATCH_SIZE inserts so far).
+        try:
+            item = await asyncio.wait_for(
+                scored_queue.get(),
+                timeout=COMMIT_INTERVAL_SECONDS,
+            )
+        except asyncio.TimeoutError:
+            # No new ticks for a full interval — flush any pending writes.
+            if pending_count > 0:
+                try:
+                    await db_conn.commit()
+                    logger.debug(
+                        "Batch commit (timeout flush)",
+                        extra={"pending_rows": pending_count},
+                    )
+                except Exception as exc:
+                    logger.error("Batch commit failed (timeout)", extra={"error": str(exc)})
+                finally:
+                    pending_count = 0
+                    last_commit_time = asyncio.get_event_loop().time()
+            continue
 
         if item is SHUTDOWN_SENTINEL:
             scored_queue.task_done()
+            # Flush any remaining inserts before exiting
+            if pending_count > 0:
+                try:
+                    await db_conn.commit()
+                    logger.info(
+                        "Final batch commit on shutdown",
+                        extra={"pending_rows": pending_count},
+                    )
+                except Exception as exc:
+                    logger.error("Final batch commit failed", extra={"error": str(exc)})
             logger.info("Broadcast loop received shutdown sentinel")
             break
 
         scored_tick: ScoredTick = item
 
         try:
-            # Persist before broadcasting so the history endpoint is always
-            # consistent with what the dashboard has displayed.
-            await queries.insert_tick(db_conn, scored_tick)
+            # Insert WITHOUT committing — the commit is deferred to the batch flush below.
+            await queries.insert_tick_no_commit(db_conn, scored_tick)
+            pending_count += 1
 
+            # Flush condition: either the batch is full or the time window has elapsed.
+            now = asyncio.get_event_loop().time()
+            time_since_commit = now - last_commit_time
+            if pending_count >= COMMIT_BATCH_SIZE or time_since_commit >= COMMIT_INTERVAL_SECONDS:
+                await db_conn.commit()
+                logger.debug(
+                    "Batch commit",
+                    extra={
+                        "pending_rows": pending_count,
+                        "elapsed_s": round(time_since_commit, 2),
+                    },
+                )
+                pending_count = 0
+                last_commit_time = now
+
+            # Broadcast immediately regardless of commit state — clients need
+            # real-time data even if the DB write is still pending.
             if manager.client_count > 0:
                 await manager.broadcast(scored_tick.to_dict())
                 logger.debug(
