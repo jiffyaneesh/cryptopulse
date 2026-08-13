@@ -38,6 +38,9 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
+from starlette.types import ASGIApp
 
 from app.api import config_api, history, stats
 from app.api.websocket import broadcast_loop, manager, router as ws_router
@@ -58,6 +61,70 @@ logger = logging.getLogger(__name__)
 # around limits that integrates with FastAPI's dependency injection system.
 # Limits are applied per-route via the @limiter.limit decorator.
 limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware that injects OWASP-recommended security response headers on
+    every HTTP response.
+
+    Headers added
+    ─────────────
+    X-Content-Type-Options: nosniff
+        Prevents browsers from MIME-sniffing a response away from the declared
+        Content-Type, blocking drive-by MIME-type confusion attacks.
+
+    X-Frame-Options: DENY
+        Blocks this API from being embedded in an <iframe>, preventing
+        clickjacking. Superseded by CSP frame-ancestors in modern browsers but
+        kept for older UA compatibility.
+
+    Content-Security-Policy
+        Restricts which resources the browser may load. Because this is a
+        pure JSON/WebSocket API (no HTML), the policy is maximally restrictive:
+        default-src 'none' blocks everything except what is explicitly allowed.
+
+    Referrer-Policy: no-referrer
+        Prevents the full URL from leaking in the Referer header when the
+        frontend links to external resources.
+
+    Permissions-Policy
+        Opts out of powerful browser APIs (camera, microphone, geolocation)
+        that this service never uses.
+
+    Strict-Transport-Security (HSTS)
+        Tells browsers to only connect via HTTPS for the next year. Only
+        effective when the service is served over TLS — harmless over HTTP.
+
+    WebSocket responses (101 Upgrade) are passed through unchanged:
+    security headers on upgrade responses are ignored by browsers and could
+    confuse some proxy implementations.
+    """
+
+    async def dispatch(self, request: Request, call_next) -> Response:
+        response: Response = await call_next(request)
+
+        # Skip header injection for WebSocket upgrade responses
+        if response.status_code == 101:
+            return response
+
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers["Permissions-Policy"] = (
+            "camera=(), microphone=(), geolocation=()"
+        )
+        response.headers["Strict-Transport-Security"] = (
+            "max-age=31536000; includeSubDomains"
+        )
+        # Pure API — no scripts, styles, images, or frames needed.
+        # connect-src 'self' is kept to allow same-origin fetch/XHR from
+        # API-explorer tools (e.g., /docs). WebSocket connects are handled
+        # by the browser independently of the API origin.
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'none'; connect-src 'self'"
+        )
+        return response
 
 # Bounded queues prevent unbounded memory growth if the scorer or broadcaster
 # can't keep up with the poller. If the queue fills (unlikely at our poll rate),
@@ -196,6 +263,11 @@ def create_app() -> FastAPI:
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
     app.add_middleware(SlowAPIMiddleware)
+
+    # ── Security response headers ─────────────────────────────────────────────
+    # Injects OWASP-recommended headers (CSP, X-Frame-Options, HSTS, etc.)
+    # on every response. WebSocket 101 upgrades are skipped.
+    app.add_middleware(SecurityHeadersMiddleware)
 
     # ── CORS middleware ───────────────────────────────────────────────────────
     # Explicitly enumerate allowed methods and headers instead of using "*".
