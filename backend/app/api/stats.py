@@ -22,12 +22,17 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from app.db import queries
 from app.db.database import DatabaseConnectionAdapter, get_db
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["stats"])
+
+# Module-level limiter — state is shared via app.state.limiter (see main.py).
+limiter = Limiter(key_func=get_remote_address)
 
 
 class StatsResponse(BaseModel):
@@ -46,6 +51,7 @@ class StatsResponse(BaseModel):
 
 
 @router.get("/stats", response_model=StatsResponse, summary="Get dashboard statistics")
+@limiter.limit("30/minute")
 async def get_stats(
     request: Request,
     db: DatabaseConnectionAdapter = Depends(get_db),

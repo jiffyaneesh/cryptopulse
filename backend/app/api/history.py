@@ -23,12 +23,18 @@ import logging
 
 from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from app.db import queries
 from app.db.database import DatabaseConnectionAdapter, get_db
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["history"])
+
+# Module-level limiter used for the @limiter.limit decorator below.
+# The actual state (counters) lives in app.state.limiter set up in main.py.
+limiter = Limiter(key_func=get_remote_address)
 
 # Maximum rows the client can request per call to prevent
 # accidentally downloading the entire database.
@@ -68,6 +74,7 @@ class TickHistoryResponse(BaseModel):
 
 
 @router.get("/history", response_model=TickHistoryResponse, summary="Get tick history")
+@limiter.limit("30/minute")
 async def get_history(
     request: Request,
     coin_id: str = Query(..., description="CoinGecko coin ID to retrieve history for."),

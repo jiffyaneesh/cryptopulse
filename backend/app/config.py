@@ -116,9 +116,23 @@ class Settings(BaseSettings):
     )
 
     # CORS origins allowed to connect. In production, set to the actual frontend URL.
+    # Never leave this as ["*"] — that allows any origin to make credentialed requests.
     cors_origins: list[str] = Field(
-        default=["http://localhost:5173", "http://localhost:3000", "http://localhost:80"],
+        default=["http://localhost:5173", "http://localhost:3000"],
         description="Allowed CORS origins for the frontend.",
+    )
+
+    # ── API Authentication ────────────────────────────────────────────────────
+    # Optional API key for mutating endpoints (POST /api/config).
+    # When empty (default), authentication is disabled — suitable for local dev.
+    # In production, set CRYPTOPULSE_API_KEY to a strong random string.
+    # Generate one with: python -c "import secrets; print(secrets.token_hex(32))"
+    api_key: str = Field(
+        default="",
+        description=(
+            "API key for mutating endpoints. Empty = auth disabled (local dev). "
+            "Set via CRYPTOPULSE_API_KEY env var in production."
+        ),
     )
 
     @property

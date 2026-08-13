@@ -31,8 +31,13 @@ import logging
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.util import get_remote_address
 
 from app.api import config_api, history, stats
 from app.api.websocket import broadcast_loop, manager, router as ws_router
@@ -47,6 +52,12 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+# ── Rate limiter ─────────────────────────────────────────────────────────────
+# Uses the client IP address as the rate-limit key. SlowAPI is a thin wrapper
+# around limits that integrates with FastAPI's dependency injection system.
+# Limits are applied per-route via the @limiter.limit decorator.
+limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
 
 # Bounded queues prevent unbounded memory growth if the scorer or broadcaster
 # can't keep up with the poller. If the queue fills (unlikely at our poll rate),
@@ -179,13 +190,24 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # CORS middleware: allow the Vite frontend (and any configured origins) to connect.
+    # ── Rate limiting middleware ──────────────────────────────────────────────
+    # Attaches the limiter instance to app.state so SlowAPIMiddleware can find
+    # it. The 429 handler returns a JSON body instead of the default plain text.
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    app.add_middleware(SlowAPIMiddleware)
+
+    # ── CORS middleware ───────────────────────────────────────────────────────
+    # Explicitly enumerate allowed methods and headers instead of using "*".
+    # Wildcards bypass browser preflight protection for credentialed requests.
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        # Only the HTTP methods actually used by the frontend
+        allow_methods=["GET", "POST"],
+        # Only the headers the frontend actually sends
+        allow_headers=["Content-Type", "X-API-Key"],
     )
 
     # Include routers — each router owns its own URL prefix and tag
