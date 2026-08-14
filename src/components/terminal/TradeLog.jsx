@@ -20,6 +20,7 @@
  */
 
 import React, { useState, useCallback, useMemo } from "react";
+import { useShallow } from "zustand/react/shallow";
 import PanelFrame from "../layout/PanelFrame";
 import Tooltip from "../ui/Tooltip";
 import useTickStore from "../../store/tickStore";
@@ -52,13 +53,16 @@ export default function TradeLog({ activeCoin }) {
    * avoids re-rendering when older (non-visible) ticks in the same coin's
    * history are evicted from the front of the array.
    *
-   * We use a stable selector function created with useMemo so Zustand can
-   * reference-compare the returned slice between renders.
+   * The selector returns a fresh array on every call, so it must be wrapped in
+   * useShallow — Zustand v5 compares with Object.is only, and an unwrapped
+   * slice() would re-render forever (React error #185).
    */
   const recentTicks = useTickStore(
-    useMemo(
-      () => (state) => (state.tickHistory[activeCoin] ?? EMPTY).slice(-LOG_DISPLAY_LIMIT),
-      [activeCoin]
+    useShallow(
+      useMemo(
+        () => (state) => (state.tickHistory[activeCoin] ?? EMPTY).slice(-LOG_DISPLAY_LIMIT),
+        [activeCoin]
+      )
     )
   );
 

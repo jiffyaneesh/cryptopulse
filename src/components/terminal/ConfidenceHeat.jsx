@@ -34,6 +34,7 @@
  */
 
 import React, { useMemo } from "react";
+import { useShallow } from "zustand/react/shallow";
 import PanelFrame from "../layout/PanelFrame";
 import Tooltip from "../ui/Tooltip";
 import useTickStore from "../../store/tickStore";
@@ -48,6 +49,9 @@ const WINDOW = 20;
  * Using 52560 (≈ 10s poll × 6/min × 525,600 min/year).
  */
 const TICKS_PER_YEAR = 52_560;
+
+/** Stable empty array so selectors never return a fresh reference. */
+const EMPTY = [];
 
 const SIGNAL_TOOLTIPS = {
   "HST CONVERGENCE": (
@@ -192,12 +196,14 @@ export default function ConfidenceHeat({ activeCoin }) {
    * price window changes, not when other coins receive ticks.
    */
   const recentPrices = useTickStore(
-    useMemo(
-      () => (state) =>
-        (state.tickHistory[activeCoin] ?? [])
-          .slice(-(WINDOW + 1))
-          .map((t) => t.price_usd),
-      [activeCoin]
+    useShallow(
+      useMemo(
+        () => (state) =>
+          (state.tickHistory[activeCoin] ?? EMPTY)
+            .slice(-(WINDOW + 1))
+            .map((t) => t.price_usd),
+        [activeCoin]
+      )
     )
   );
 
