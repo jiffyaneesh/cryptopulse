@@ -31,9 +31,12 @@ import logging
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
+from pathlib import Path
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
@@ -117,13 +120,18 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Strict-Transport-Security"] = (
             "max-age=31536000; includeSubDomains"
         )
-        # Pure API — no scripts, styles, images, or frames needed.
-        # connect-src 'self' is kept to allow same-origin fetch/XHR from
-        # API-explorer tools (e.g., /docs). WebSocket connects are handled
-        # by the browser independently of the API origin.
-        response.headers["Content-Security-Policy"] = (
-            "default-src 'none'; connect-src 'self'"
-        )
+        # If response is HTML or static asset, allow loading styles, fonts, and scripts
+        if request.url.path.startswith("/api/") or request.url.path == "/health":
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'none'; connect-src 'self'"
+            )
+        else:
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'self'; script-src 'self' 'unsafe-inline'; "
+                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+                "font-src 'self' https://fonts.gstatic.com data:; "
+                "connect-src 'self' ws: wss: http: https:;"
+            )
         return response
 
 # Bounded queues prevent unbounded memory growth if the scorer or broadcaster
@@ -292,6 +300,30 @@ def create_app() -> FastAPI:
     async def health_check() -> dict:
         """Simple health check endpoint for Docker Compose and load balancer probes."""
         return {"status": "ok", "version": "0.3.0"}
+
+    # ── Mount Frontend Static Build (SPA fallback) ───────────────────────────
+    # Allows serving the React SPA directly from FastAPI if dist/ exists
+    dist_path = Path(__file__).resolve().parent.parent.parent / "dist"
+    if not dist_path.is_dir():
+        dist_path = Path("/app/dist")
+
+    if dist_path.is_dir():
+        assets_path = dist_path / "assets"
+        if assets_path.is_dir():
+            app.mount("/assets", StaticFiles(directory=str(assets_path)), name="assets")
+
+        @app.get("/{full_path:path}", include_in_schema=False)
+        async def serve_spa(full_path: str):
+            # Do not intercept API, WebSocket, or health endpoints
+            if full_path.startswith("api/") or full_path.startswith("ws/") or full_path == "health":
+                return JSONResponse(status_code=404, content={"detail": "Not Found"})
+            file_path = dist_path / full_path
+            if file_path.is_file():
+                return FileResponse(file_path)
+            index_file = dist_path / "index.html"
+            if index_file.is_file():
+                return FileResponse(index_file)
+            return JSONResponse(status_code=404, content={"detail": "Not Found"})
 
     return app
 

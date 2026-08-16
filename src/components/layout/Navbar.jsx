@@ -5,6 +5,7 @@
  */
 
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import axios from "axios";
 import ConnectionStatus from "./ConnectionStatus";
 import Tooltip from "../ui/Tooltip";
@@ -121,8 +122,8 @@ function Navbar({ currentModel = "halftrees", onModelChange }) {
         {/* Research / Theory Whitepaper Navigation Links */}
         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
           <Tooltip text="View academic whitepaper with formal mathematical proofs and algorithm specifications." position="bottom">
-            <a
-              href="/paper"
+            <Link
+              to="/paper"
               className="navbar-btn"
               style={{
                 color: "#00e5ff",
@@ -135,12 +136,12 @@ function Navbar({ currentModel = "halftrees", onModelChange }) {
               }}
             >
               <span>📄</span> RESEARCH PAPER
-            </a>
+            </Link>
           </Tooltip>
 
           <Tooltip text="Explore mathematical foundations of HalfSpaceTrees, QuantileFilter, and Stationarity." position="bottom">
-            <a
-              href="/theory"
+            <Link
+              to="/theory"
               className="navbar-btn"
               style={{
                 color: "#ff9999",
@@ -153,7 +154,7 @@ function Navbar({ currentModel = "halftrees", onModelChange }) {
               }}
             >
               <span>🔬</span> THEORY
-            </a>
+            </Link>
           </Tooltip>
         </div>
 
