@@ -55,9 +55,9 @@ function Navbar({ currentModel = "halftrees", onModelChange }) {
       {/* LEFT: brand + model selector */}
       <div className="navbar__left">
         <Tooltip text="CryptoPulse ML Terminal — real-time anomaly detection on live crypto ticks." position="bottom">
-          <span className="navbar__brand">
+          <Link to="/" className="navbar__brand">
             CRYPTOPULSE // ML-TERMINAL
-          </span>
+          </Link>
         </Tooltip>
 
         <span className="text-muted navbar__sep">|</span>

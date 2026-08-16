@@ -9,6 +9,7 @@ import React, { useEffect } from "react";
 import ResearchNav from "../components/research/ResearchNav";
 import MathFormula, { InlineMath } from "../components/research/MathFormula";
 import TheoremBox from "../components/research/TheoremBox";
+import BackToTop from "../components/research/BackToTop";
 import "../styles/research.css";
 
 export function EmpiricalEvaluation() {
@@ -254,6 +255,7 @@ export function EmpiricalEvaluation() {
           </article>
         </div>
       </main>
+      <BackToTop />
     </div>
   );
 }

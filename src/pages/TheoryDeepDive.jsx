@@ -11,6 +11,7 @@ import MathFormula, { InlineMath } from "../components/research/MathFormula";
 import TheoremBox from "../components/research/TheoremBox";
 import AlgorithmBlock from "../components/research/AlgorithmBlock";
 import InteractivePlayground from "../components/research/InteractivePlayground";
+import BackToTop from "../components/research/BackToTop";
 import "../styles/research.css";
 
 export function TheoryDeepDive() {
@@ -260,6 +261,7 @@ export function TheoryDeepDive() {
           </article>
         </div>
       </main>
+      <BackToTop />
     </div>
   );
 }
