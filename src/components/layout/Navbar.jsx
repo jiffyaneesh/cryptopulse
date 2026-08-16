@@ -118,6 +118,45 @@ function Navbar({ currentModel = "halftrees", onModelChange }) {
           )}
         </div>
 
+        {/* Research / Theory Whitepaper Navigation Links */}
+        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <Tooltip text="View academic whitepaper with formal mathematical proofs and algorithm specifications." position="bottom">
+            <a
+              href="/paper"
+              className="navbar-btn"
+              style={{
+                color: "#00e5ff",
+                borderColor: "rgba(0, 229, 255, 0.3)",
+                background: "rgba(0, 229, 255, 0.05)",
+                textDecoration: "none",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "4px"
+              }}
+            >
+              <span>📄</span> RESEARCH PAPER
+            </a>
+          </Tooltip>
+
+          <Tooltip text="Explore mathematical foundations of HalfSpaceTrees, QuantileFilter, and Stationarity." position="bottom">
+            <a
+              href="/theory"
+              className="navbar-btn"
+              style={{
+                color: "#ff9999",
+                borderColor: "rgba(255, 77, 77, 0.3)",
+                background: "rgba(255, 77, 77, 0.05)",
+                textDecoration: "none",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "4px"
+              }}
+            >
+              <span>🔬</span> THEORY
+            </a>
+          </Tooltip>
+        </div>
+
         {/* Refresh */}
         <Tooltip text="Reload the terminal and reset all state." position="bottom">
           <button
